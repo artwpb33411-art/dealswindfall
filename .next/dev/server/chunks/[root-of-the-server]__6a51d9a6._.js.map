@@ -1,6 +1,0 @@
-{
-  "version": 3,
-  "sources": [],
-  "sections": [
-    {"offset": {"line": 46, "column": 0}, "map": {"version":3,"sources":["file:///C:/Projects/dealswindfall/nextjs-boilerplate/app/api/logout/route.ts"],"sourcesContent":["import { NextResponse } from \"next/server\";\r\n\r\nexport async function POST() {\r\n  const res = NextResponse.json({ success: true });\r\n  res.cookies.delete(\"auth\");\r\n  return res;\r\n}\r\n"],"names":[],"mappings":";;;;AAAA;;AAEO,eAAe;IACpB,MAAM,MAAM,gJAAY,CAAC,IAAI,CAAC;QAAE,SAAS;IAAK;IAC9C,IAAI,OAAO,CAAC,MAAM,CAAC;IACnB,OAAO;AACT","debugId":null}}]
-}

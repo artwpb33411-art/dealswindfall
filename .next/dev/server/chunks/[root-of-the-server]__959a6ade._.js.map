@@ -1,6 +1,0 @@
-{
-  "version": 3,
-  "sources": [],
-  "sections": [
-    {"offset": {"line": 46, "column": 0}, "map": {"version":3,"sources":["file:///C:/Projects/dealswindfall/nextjs-boilerplate/app/api/login/route.ts"],"sourcesContent":["import { NextResponse } from \"next/server\";\r\n\r\nexport async function POST(request: Request) {\r\n  const { username, password } = await request.json();\r\n\r\n  const validUser = process.env.ADMIN_USER;\r\n  const validPass = process.env.ADMIN_PASS;\r\n\r\n  if (username === validUser && password === validPass) {\r\n    const res = NextResponse.json({ success: true });\r\n    res.cookies.set(\"auth\", \"true\", { httpOnly: true, path: \"/\" });\r\n    return res;\r\n  }\r\n\r\n  return NextResponse.json({ error: \"Invalid credentials\" }, { status: 401 });\r\n}\r\n"],"names":[],"mappings":";;;;AAAA;;AAEO,eAAe,KAAK,OAAgB;IACzC,MAAM,EAAE,QAAQ,EAAE,QAAQ,EAAE,GAAG,MAAM,QAAQ,IAAI;IAEjD,MAAM,YAAY,QAAQ,GAAG,CAAC,UAAU;IACxC,MAAM,YAAY,QAAQ,GAAG,CAAC,UAAU;IAExC,IAAI,aAAa,aAAa,aAAa,WAAW;QACpD,MAAM,MAAM,gJAAY,CAAC,IAAI,CAAC;YAAE,SAAS;QAAK;QAC9C,IAAI,OAAO,CAAC,GAAG,CAAC,QAAQ,QAAQ;YAAE,UAAU;YAAM,MAAM;QAAI;QAC5D,OAAO;IACT;IAEA,OAAO,gJAAY,CAAC,IAAI,CAAC;QAAE,OAAO;IAAsB,GAAG;QAAE,QAAQ;IAAI;AAC3E","debugId":null}}]
-}
