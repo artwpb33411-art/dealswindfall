@@ -1,7 +1,7 @@
 export default function Footer() {
   return (
-    <footer className="bg-gray-100 text-center text-gray-500 py-4 mt-10">
-      © {new Date().getFullYear()} DealsWindfall. All rights reserved.
+    <footer className="bg-white border-t border-gray-100 py-3 text-center text-xs text-gray-400">
+      © {new Date().getFullYear()} DealsWindfall — Curated Deals, Smarter Shopping
     </footer>
   );
 }

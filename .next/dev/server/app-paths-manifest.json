@@ -1,0 +1,9 @@
+{
+  "/admin/page": "app/admin/page.js",
+  "/api/analytics/list/route": "app/api/analytics/list/route.js",
+  "/api/deals/bulk/route": "app/api/deals/bulk/route.js",
+  "/api/deals/route": "app/api/deals/route.js",
+  "/api/holiday-events/route": "app/api/holiday-events/route.js",
+  "/api/track/route": "app/api/track/route.js",
+  "/page": "app/page.js"
+}
