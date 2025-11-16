@@ -3,31 +3,38 @@ import { supabaseAdmin } from "@/lib/supabaseAdmin";
 
 export async function GET() {
   try {
-    const { data: totalViews } = await supabaseAdmin
+    // Total events
+    const { count: totalEvents } = await supabaseAdmin
       .from("analytics_events")
-      .select("*", { count: "exact", head: true })
-      .eq("event_type", "page_view");
+      .select("*", { count: "exact", head: true });
 
-    const { data: uniqueVisitors } = await supabaseAdmin
+    // Event type breakdown
+    const { data: eventTypes } = await supabaseAdmin
       .from("analytics_events")
-      .select("user_id", { count: "exact", head: true })
-      .eq("event_type", "page_view");
+      .select("event_type");
 
-    const { data: topStores } = await supabaseAdmin
-      .from("analytics_events")
-      .select("store, count:store", { groupBy: "store" });
+    const typeCounts: Record<string, number> = {};
+    eventTypes?.forEach((e) => {
+      typeCounts[e.event_type] = (typeCounts[e.event_type] || 0) + 1;
+    });
 
-    const { data: sources } = await supabaseAdmin
+    // Top pages
+    const { data: pages } = await supabaseAdmin
       .from("analytics_events")
-      .select("referrer, count:referrer", { groupBy: "referrer" });
+      .select("page");
+
+    const pageCounts: Record<string, number> = {};
+    pages?.forEach((p) => {
+      pageCounts[p.page] = (pageCounts[p.page] || 0) + 1;
+    });
 
     return NextResponse.json({
-      totalViews: totalViews?.length || 0,
-      uniqueVisitors: uniqueVisitors?.length || 0,
-      topStore: topStores?.[0]?.store || "N/A",
-      sources: sources || [],
+      total_events: totalEvents ?? 0,
+      event_type_counts: typeCounts,
+      page_counts: pageCounts,
     });
-  } catch (e: any) {
-    return NextResponse.json({ error: e.message }, { status: 500 });
+  } catch (err: any) {
+    console.error("Analytics route error:", err);
+    return NextResponse.json({ error: err.message }, { status: 500 });
   }
 }
