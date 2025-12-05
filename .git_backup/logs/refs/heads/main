@@ -1,0 +1,54 @@
+32503428a628777f43e36ccedcc7dd843053d857 3bfb64685dd55d8c37c5a19945d80f9b5efea006 Santosh Shrestha <artwpb33411@gmail.com> 1763347540 -0500	commit: Added analytics (GA4, Hotjar, Vercel) and updated layout.tsx
+3bfb64685dd55d8c37c5a19945d80f9b5efea006 8ca646c6e703874b3421472566aeabed108c4628 Santosh Shrestha <artwpb33411@gmail.com> 1763406630 -0500	commit: Added new category in TopCategories.tsx
+8ca646c6e703874b3421472566aeabed108c4628 fbe25b901cb4a26245372960961b589c56b94864 Santosh Shrestha <artwpb33411@gmail.com> 1763418332 -0500	commit: Added new category in security feature in admin login page
+fbe25b901cb4a26245372960961b589c56b94864 a74fdd0ce5bf647e9766436aa9fa39e5bc84cce0 Santosh Shrestha <artwpb33411@gmail.com> 1763501328 -0500	commit: Added auto publish, related link extraction, settings panel, cron integration
+a74fdd0ce5bf647e9766436aa9fa39e5bc84cce0 372dc36e01c4d551f100cbe7f4dc3130679bfc17 Santosh Shrestha <artwpb33411@gmail.com> 1763503347 -0500	commit: Added auto publish, related link extraction, settings panel, cron integration and type cast fixed
+372dc36e01c4d551f100cbe7f4dc3130679bfc17 ccaf299f95dacd45c026a0c9efaeb70456b1baa9 Santosh Shrestha <artwpb33411@gmail.com> 1763676227 -0500	commit: Added bilingual support (EN/ES) for homepage, deal detail, static pages, categories, headers
+ccaf299f95dacd45c026a0c9efaeb70456b1baa9 dae4dbffb5374fb7d7c9bf6dfa0f0fde493802b4 Santosh Shrestha <artwpb33411@gmail.com> 1763676500 -0500	commit: Added bilingual support (EN/ES) for homepage, deal detail, static pages, categories, headers
+dae4dbffb5374fb7d7c9bf6dfa0f0fde493802b4 b38d9e17f053cf2ac12ccfff12c6b0d131d90017 Santosh Shrestha <artwpb33411@gmail.com> 1763677108 -0500	commit: Added bilingual support (EN/ES) for homepage, deal detail, static pages, categories, headers
+b38d9e17f053cf2ac12ccfff12c6b0d131d90017 2af27a3486416994d3481fd45962b0cc411762ef Santosh Shrestha <artwpb33411@gmail.com> 1763678434 -0500	commit: Added bilingual support (EN/ES) for homepage, deal detail, static pages, categories, headers
+2af27a3486416994d3481fd45962b0cc411762ef 2d749c6d6f58113d2fd9f5258b9c135c10e699c2 Santosh Shrestha <artwpb33411@gmail.com> 1763678865 -0500	commit: Added bilingual support (EN/ES) for homepage, deal detail, static pages, categories, headers
+2d749c6d6f58113d2fd9f5258b9c135c10e699c2 3bb804e849aef3920c560a798c7bee81e7c2d750 Santosh Shrestha <artwpb33411@gmail.com> 1763679935 -0500	commit: Added bilingual support (EN/ES) for homepage, deal detail, static pages, categories, headers
+3bb804e849aef3920c560a798c7bee81e7c2d750 3486bdd75de3f8362d2334df7dcbc7926c17e239 Santosh Shrestha <artwpb33411@gmail.com> 1763735225 -0500	commit: Fix bulk AI rewrite, fix baseUrl, sanitize text, working locally
+3486bdd75de3f8362d2334df7dcbc7926c17e239 6ecf1197074be4ea246ee05561d9265698a5c6a9 Santosh Shrestha <artwpb33411@gmail.com> 1763752316 -0500	commit: Fix sitemap
+6ecf1197074be4ea246ee05561d9265698a5c6a9 fe23b2fbf28ed3941fc7447278ee6c496bc044a0 Santosh Shrestha <artwpb33411@gmail.com> 1763762611 -0500	commit: Fix sitemap
+fe23b2fbf28ed3941fc7447278ee6c496bc044a0 8a4f16ad244b88a161712cda9205884b5b231c44 Santosh Shrestha <artwpb33411@gmail.com> 1764018266 -0500	commit: Added blog and fixed few glitches
+8a4f16ad244b88a161712cda9205884b5b231c44 b5ef04dde17f7bb486d9fcf1421bd7a7c01751d2 Santosh Shrestha <artwpb33411@gmail.com> 1764200018 -0500	commit: Add separate routes for Privacy, About, Contact pages
+b5ef04dde17f7bb486d9fcf1421bd7a7c01751d2 4fa5974d419b0c86896c007c8fe2c8415557ab7a Santosh Shrestha <artwpb33411@gmail.com> 1764419674 -0500	commit: Fixed layout in admin deals page
+4fa5974d419b0c86896c007c8fe2c8415557ab7a 86c0a471cc214725d42e647cea236954f3a55c06 Santosh Shrestha <artwpb33411@gmail.com> 1764432685 -0500	commit: Add social media publication code
+86c0a471cc214725d42e647cea236954f3a55c06 2229bb5dde7016225136ff5f27c8a510522c2fb6 Santosh Shrestha <artwpb33411@gmail.com> 1764433210 -0500	commit: Add social media publication code
+2229bb5dde7016225136ff5f27c8a510522c2fb6 a9207444f22e6aeaafcc27628946cded3f8ec199 Santosh Shrestha <artwpb33411@gmail.com> 1764436782 -0500	commit: Add social media publication code update 3
+a9207444f22e6aeaafcc27628946cded3f8ec199 83bc4ed611281c8e5d729fdc78e4cdd271c13a37 Santosh Shrestha <artwpb33411@gmail.com> 1764438373 -0500	commit: Add social media publication code version D
+83bc4ed611281c8e5d729fdc78e4cdd271c13a37 9a019dc66aa6fd31e7b80a1d3d492e4e1e5edac1 Santosh Shrestha <artwpb33411@gmail.com> 1764442488 -0500	commit: Add social media publication code
+9a019dc66aa6fd31e7b80a1d3d492e4e1e5edac1 0cf4abd125212cac5644332b0b2f0096b65aae03 Santosh Shrestha <artwpb33411@gmail.com> 1764442595 -0500	commit: Add separate routes for Privacy, About, Contact pages
+0cf4abd125212cac5644332b0b2f0096b65aae03 c4ae94c4fd8269486ee79a463e60b083ef939e83 Santosh Shrestha <artwpb33411@gmail.com> 1764444043 -0500	commit: Add social media publication code version D
+c4ae94c4fd8269486ee79a463e60b083ef939e83 6143a8cfcf74537c57492ab8130a2a6a07fa1d0d Santosh Shrestha <artwpb33411@gmail.com> 1764445380 -0500	commit: Add social media publication code update 3
+6143a8cfcf74537c57492ab8130a2a6a07fa1d0d 8ff3d9ad1a394780ead67793b0b607f4cd6ddeff Santosh Shrestha <artwpb33411@gmail.com> 1764445588 -0500	commit: Add social media publication code update 3
+8ff3d9ad1a394780ead67793b0b607f4cd6ddeff 6e89ea2ada5f8012e21e81cf71471edc297aeb47 Santosh Shrestha <artwpb33411@gmail.com> 1764449512 -0500	commit: Add social media publication code
+6e89ea2ada5f8012e21e81cf71471edc297aeb47 871513f465bb12d3f8121cad3ac7538f2435df71 Santosh Shrestha <artwpb33411@gmail.com> 1764452791 -0500	commit: Add social media publication code for Telegram
+871513f465bb12d3f8121cad3ac7538f2435df71 dc7a4d74b8dadfe53254315fe2c5a3d6ce261578 Santosh Shrestha <artwpb33411@gmail.com> 1764608239 -0500	commit: Added facebook auto publish code
+dc7a4d74b8dadfe53254315fe2c5a3d6ce261578 4d321207937a71d159440bb9364325ba125b6ef2 Santosh Shrestha <artwpb33411@gmail.com> 1764609174 -0500	commit: Added facebook auto publish code
+4d321207937a71d159440bb9364325ba125b6ef2 7dfb59f537fb111528bbddcdf4bf3b388f799859 Santosh Shrestha <artwpb33411@gmail.com> 1764609755 -0500	commit: Added facebook auto publish code
+7dfb59f537fb111528bbddcdf4bf3b388f799859 c6ee19d2793179bbb24d5de35abde26878abcb30 Santosh Shrestha <artwpb33411@gmail.com> 1764610145 -0500	commit: Added facebook auto publish code
+c6ee19d2793179bbb24d5de35abde26878abcb30 e52453afd20137486e8eaece7799c2cb0e676fc1 Santosh Shrestha <artwpb33411@gmail.com> 1764610563 -0500	commit: Added facebook auto publish code
+e52453afd20137486e8eaece7799c2cb0e676fc1 01e092cf5023cd7a6627e3faa1a9e2a581d067c0 Santosh Shrestha <artwpb33411@gmail.com> 1764610726 -0500	commit: Added facebook auto publish code
+01e092cf5023cd7a6627e3faa1a9e2a581d067c0 ca54ee1cdd13525dee86073c3c6bdcbac4a21d4a Santosh Shrestha <artwpb33411@gmail.com> 1764622374 -0500	commit: Added Instagram auto publish code
+ca54ee1cdd13525dee86073c3c6bdcbac4a21d4a 9c761f7a605adeef5e7cab924cd1d2fe1e2ba9f4 Santosh Shrestha <artwpb33411@gmail.com> 1764623206 -0500	commit: Added Instagram auto publish code
+9c761f7a605adeef5e7cab924cd1d2fe1e2ba9f4 0720740d63aabfa1263533c73fafd4df66420e7a Santosh Shrestha <artwpb33411@gmail.com> 1764692793 -0500	commit: Added logo icon for new flyer
+0720740d63aabfa1263533c73fafd4df66420e7a 17ba2b94c974a1c6956cf0fcee503c7e6572820f Santosh Shrestha <artwpb33411@gmail.com> 1764695291 -0500	commit: Added new flyer layout
+17ba2b94c974a1c6956cf0fcee503c7e6572820f 9d6d2432d1c3563afb3f2cb2ba16ec067dad980d Santosh Shrestha <artwpb33411@gmail.com> 1764696176 -0500	commit: Added new flyer layout
+9d6d2432d1c3563afb3f2cb2ba16ec067dad980d 36777638628758134592db05f40209cc413fa84d Santosh Shrestha <artwpb33411@gmail.com> 1764697943 -0500	commit: Added logo icon for new flyer
+36777638628758134592db05f40209cc413fa84d eb92036edd679bda34f8f75d9864271ed3bee3d8 Santosh Shrestha <artwpb33411@gmail.com> 1764710110 -0500	commit: Added new flyer layout
+eb92036edd679bda34f8f75d9864271ed3bee3d8 862c7ad7059b68d72b251b182a869b68890f0b5c Santosh Shrestha <artwpb33411@gmail.com> 1764712120 -0500	commit: Added new flyer layout
+862c7ad7059b68d72b251b182a869b68890f0b5c 791652ebc3ec264eb3ac44d7f1ebbc990a6c230f Santosh Shrestha <artwpb33411@gmail.com> 1764715688 -0500	commit: Added new flyer layout
+791652ebc3ec264eb3ac44d7f1ebbc990a6c230f 2874e77534116f965fd8dc9d573ca787cb99599b Santosh Shrestha <artwpb33411@gmail.com> 1764717689 -0500	commit: Added new flyer layout
+2874e77534116f965fd8dc9d573ca787cb99599b 0c01f7a7445867d68e0481cfc8957a46f91e0798 Santosh Shrestha <artwpb33411@gmail.com> 1764786212 -0500	commit: Added new flyer layout
+0c01f7a7445867d68e0481cfc8957a46f91e0798 a7ee542c7031a59e0a486fc0fd89e844f5cd86af Santosh Shrestha <artwpb33411@gmail.com> 1764789067 -0500	commit: Added new flyer layout
+a7ee542c7031a59e0a486fc0fd89e844f5cd86af c3136c64e01d7e6b7001828e5bdac5b16e655268 Santosh Shrestha <artwpb33411@gmail.com> 1764789895 -0500	commit: Added new flyer layout
+c3136c64e01d7e6b7001828e5bdac5b16e655268 a77ad7c3ddc3e0f2502134c573cf9f8c74602c91 Santosh Shrestha <artwpb33411@gmail.com> 1764791050 -0500	commit: Added new flyer layout
+a77ad7c3ddc3e0f2502134c573cf9f8c74602c91 49aef448706ba88dbf32578c7fd524e46cfef683 Santosh Shrestha <artwpb33411@gmail.com> 1764793850 -0500	commit: Added new flyer layout
+49aef448706ba88dbf32578c7fd524e46cfef683 d247486f6c806ae3f6beb03bc8a9db540f20bec5 Santosh Shrestha <artwpb33411@gmail.com> 1764798456 -0500	commit: Added new flyer layout
+d247486f6c806ae3f6beb03bc8a9db540f20bec5 c51cca3b8e982040e6ab6c3be2cc1c12b1108bfd Santosh Shrestha <artwpb33411@gmail.com> 1764800576 -0500	commit: Added new flyer layout
+c51cca3b8e982040e6ab6c3be2cc1c12b1108bfd ce80c8c02f5ee2b187b43f173f18a2b87c02af24 Santosh Shrestha <artwpb33411@gmail.com> 1764878307 -0500	commit: Added new flyer layout
+ce80c8c02f5ee2b187b43f173f18a2b87c02af24 24b9ec3f1b5cfae093def1a4ca483123ea84ae13 Santosh - Old PC <artwpb33411@gmail.com> 1764962707 -0500	commit: Update .gitignore to ignore env files
+24b9ec3f1b5cfae093def1a4ca483123ea84ae13 a9c37dc80e03aea0502e91aa5ff34523706e3a47 Santosh - Old PC <artwpb33411@gmail.com> 1764962968 -0500	commit: Fix .gitignore to ignore env files and build folders

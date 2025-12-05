@@ -1,0 +1,256 @@
+@import "tailwindcss";
+
+/* ===============================
+   🎨 Base Theme Colors
+   =============================== */
+:root {
+  --bg-main: #f8fafc;
+  --bg-pane: #ffffff;
+  --text-primary: #111827;
+  --text-secondary: #4b5563;
+  --border-soft: #e5e7eb;
+  --accent: #2563eb;
+}
+
+/* ===============================
+   🧍‍♂️ Base Body Styling
+   =============================== */
+body {
+  background-color: var(--bg-main);
+  color: var(--text-primary);
+  font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  margin: 0;
+  padding: 0;
+   
+}
+
+/* ===============================
+   ✨ Hover Animation Utility
+   =============================== */
+@layer utilities {
+  .hoverable:hover {
+    background-color: theme('colors.blue.50');
+    transition: background-color 0.3s ease, transform 0.2s ease;
+    transform: scale(1.01);
+    border-color: theme('colors.blue.400');
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  }
+}
+
+/* ===============================
+   🧩 Input Field Utility
+   =============================== */
+.input {
+  @apply w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-blue-400;
+}
+
+/* ===============================
+   🌫️ Pane Dividers (Soft Shadows)
+   =============================== */
+.custom-pane {
+  transition: box-shadow 0.3s ease;
+  box-shadow: inset -1px 0 0 var(--border-soft);
+}
+.custom-pane:hover {
+  box-shadow: inset -1px 0 0 #d1d5db, inset 1px 0 0 #d1d5db;
+}
+
+/* ===============================
+   🖱️ Scrollbars (Outlook-style)
+   =============================== */
+
+/* ===============================
+   🖱️ Scrollbars (Seamless invisible look)
+   =============================== */
+
+.custom-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: transparent transparent; /* Firefox */
+}
+
+/* Default (hidden-looking) state */
+.custom-scroll::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+  background-color: var(--bg-pane); /* same as background */
+}
+.custom-scroll::-webkit-scrollbar-track {
+  background-color: var(--bg-pane); /* blend with background */
+}
+.custom-scroll::-webkit-scrollbar-thumb {
+  background-color: var(--bg-pane); /* invisible by default */
+  border-radius: 4px;
+  transition: background-color 0.3s ease;
+}
+
+/* On hover – subtle, minimal visibility */
+.custom-scroll:hover::-webkit-scrollbar-thumb {
+  background-color: #c4c4c4; /* light gray */
+}
+.custom-scroll:hover::-webkit-scrollbar-thumb:hover {
+  background-color: #999; /* slightly darker on active hover */
+}
+
+/* Firefox-only visibility tweak */
+.custom-scroll:hover {
+  scrollbar-color: #c4c4c4 transparent;
+}
+
+/* ===============================
+   💠 Header & Footer Shadows
+   (Optional: subtle separation)
+   =============================== */
+.header-shadow {
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+.footer-shadow {
+  box-shadow: 0 -2px 4px rgba(0, 0, 0, 0.05);
+}
+
+/* ===============================
+   🪶 Ultra-Thin Minimal Scrollbars
+   =============================== */
+
+.custom-scroll {
+  overflow: auto;
+  scrollbar-width: thin;
+  scrollbar-color: transparent transparent;
+}
+
+/* Hover state for Firefox */
+.custom-scroll:hover {
+  scrollbar-color: #d1d5db transparent;
+}
+
+/* WebKit browsers (Chrome, Edge, Safari) */
+.custom-scroll::-webkit-scrollbar {
+  width: 1px;  /* thinner width */
+  height: 1px; /* thinner horizontal scroll if needed */
+  background-color: var(--bg-pane);
+}
+
+.custom-scroll::-webkit-scrollbar-thumb {
+  background-color: transparent;
+  border-radius: 1px;
+  transition: background-color 0.3s;
+}
+
+/* Visible only on hover */
+.custom-scroll:hover::-webkit-scrollbar-thumb {
+  background-color: #c7c7c7;
+}
+
+.custom-scroll::-webkit-scrollbar-thumb:hover {
+  background-color: #a0a0a0;
+}
+
+
+/* --- Pane scroll bounce suppression & subtle fade --- */
+.custom-pane {
+  scroll-behavior: smooth;
+  overscroll-behavior: contain; /* prevent nested scroll bounce */
+}
+
+.custom-pane::after {
+  content: "";
+  display: block;
+  height: 16px; /* small fade spacing at bottom */
+}
+
+/* ========================================
+   🧭 Context-Aware Scrolling Behavior
+   ======================================== */
+
+/* Default: prevent global scroll for app layout pages */
+/*body:not(.admin-page) {
+  overflow: hidden;
+  height: 100vh;
+}
+*/
+/* Allow normal scrolling on admin pages */
+body.admin-page {
+  overflow-y: auto;
+  height: auto;
+}
+
+
+.no-scrollbar::-webkit-scrollbar { display: none; }
+.no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+@media (max-width: 768px) {
+  .custom-scroll::-webkit-scrollbar {
+    display: none;
+  }
+  .custom-scroll {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+}
+
+
+@keyframes slide-in-left {
+  from { transform: translateX(-100%); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}
+@keyframes slide-in-right {
+  from { transform: translateX(100%); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.animate-slide-in-left { animation: slide-in-left 0.25s ease-out; }
+.animate-slide-in-right { animation: slide-in-right 0.25s ease-out; }
+.animate-fade-in { animation: fade-in 0.25s ease-in; }
+
+.navbtn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: #6b7280;
+}
+.navbtn:active {
+  transform: scale(0.92);
+}
+/* Slide in from right */
+@keyframes slide-in-right {
+  from { transform: translateX(100%); }
+  to   { transform: translateX(0); }
+}
+
+.animate-slide-in-right {
+  animation: slide-in-right 0.3s ease-out forwards;
+}
+
+/* Slide out to left */
+@keyframes slide-out-left {
+  from { transform: translateX(0); }
+  to   { transform: translateX(-100%); }
+}
+
+.animate-slide-out-left {
+  animation: slide-out-left 0.3s ease-in forwards;
+}
+
+/* Slide in from right */
+@keyframes slide-in-right {
+  from { transform: translateX(100%); }
+  to   { transform: translateX(0); }
+}
+
+.animate-slide-in-right {
+  animation: slide-in-right 0.3s ease-out forwards;
+}
+
+/* Slide out to right */
+@keyframes slide-out-right {
+  from { transform: translateX(0); }
+  to   { transform: translateX(100%); }
+}
+
+.animate-slide-out-right {
+  animation: slide-out-right 0.3s ease-in forwards;
+}

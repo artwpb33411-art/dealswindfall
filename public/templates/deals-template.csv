@@ -1,0 +1,3 @@
+description,store_name,category,old_price,current_price,image_link,product_link,coupon_code,shipping_cost,notes,expire_date
+"Samsung 55"" Smart TV",Best Buy,Television,499,379,https://example.com/image.jpg,https://example.com/product,SAVE20,0,"Holiday deal, limited stock",2025-12-31
+iRobot Roomba Vacuum,Amazon,Appliances,299,199,https://example.com/roomba.jpg,https://example.com/roomba,,0,Automatic vacuum cleaner with WiFi connectivity,2025-12-15
