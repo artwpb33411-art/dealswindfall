@@ -60,7 +60,14 @@ export async function generateFlyerSquare(
   ctx.font = "700 48px Inter";
 
   const maxTextWidth = 900;
-  const titleLines = wrapText(ctx, deal.title, maxTextWidth);
+  const safeTitle =
+  deal.title ||
+  deal.description ||
+  deal.notes ||
+  deal.slug ||
+  "Hot Deal!";
+
+const titleLines = wrapText(ctx, safeTitle, maxTextWidth);
 
   let y = 90;
   titleLines.slice(0, 3).forEach((line) => {

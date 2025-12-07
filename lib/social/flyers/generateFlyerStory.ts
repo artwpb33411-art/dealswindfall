@@ -61,7 +61,15 @@ export async function generateFlyerStory(
 
   while (fontSize >= 34) {
     ctx.font = `700 ${fontSize}px Inter`;
-    lines = wrapLines(ctx, deal.title, 900, 2);
+   const safeTitle =
+  deal.title ||
+  deal.description ||
+  deal.notes ||
+  deal.slug ||
+  "Hot Deal!";
+
+lines = wrapLines(ctx, safeTitle, 900, 2);
+
     if (lines.length <= 2) break;
     fontSize -= 2;
   }
