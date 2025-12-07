@@ -1,5 +1,3 @@
-// D:\Projects\dealswindfall\app\api\social\hourly\route.ts
-
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 
@@ -14,9 +12,7 @@ import { publishToInstagram } from "@/lib/social/publishers/instagram";
 
 import { saveImageToSupabase } from "@/lib/social/saveImage";
 
-// ---------------------------------------------------------
-// Helper: weighted pick by percent_diff (bigger discount → higher chance)
-// ---------------------------------------------------------
+// Weighted pick by percent_diff (bigger discount => higher chance)
 function weightedRandom(deals: any[]) {
   const total = deals.reduce(
     (sum, d) => sum + Math.max(d.percent_diff ?? 1, 1),
@@ -36,10 +32,8 @@ export async function POST(req: Request) {
   const CRON_SECRET =
     process.env.CRON_SECRET ?? "9f3e7c29f8a94e4bb9dae34234591e95";
 
-  // ✅ Cron call = has correct secret
-  // ✅ Manual call (button / browser) = no secret → force = true
   const isCronCall = req.headers.get("x-cron-secret") === CRON_SECRET;
-  const force = !isCronCall; // Option A behaviour
+  const force = !isCronCall; // Option A: manual calls always force run
 
   const now = new Date();
 
@@ -49,7 +43,7 @@ export async function POST(req: Request) {
     console.log("### isCron:", isCronCall, "force:", force, "###");
     console.log("###############################");
 
-    // 1️⃣ Load settings, state, platforms
+    // 1️⃣ Load settings / state / platforms
     const [
       { data: settings, error: settingsError },
       { data: state, error: stateError },
@@ -80,7 +74,9 @@ export async function POST(req: Request) {
       });
 
       await supabaseAdmin.from("auto_publish_logs").insert({
-        action: "social_autopost_error",
+        run_time: now.toISOString(),
+        action: "social_error",
+        deals_published: 0,
         message: "Missing settings/state/platforms",
       });
 
@@ -95,14 +91,16 @@ export async function POST(req: Request) {
       console.log("⛔ Social autopost disabled.");
 
       await supabaseAdmin.from("auto_publish_logs").insert({
-        action: "social_autopost_skip",
-        message: "Skipped: social_enabled is false",
+        run_time: now.toISOString(),
+        action: "social_skip",
+        deals_published: 0,
+        message: "Social autopost disabled.",
       });
 
       return NextResponse.json({ skipped: true, reason: "disabled" });
     }
 
-    // 3️⃣ Check platforms
+    // 3️⃣ Active platforms
     const activePlatforms = Object.entries(platforms)
       .filter(([, v]) => !!v)
       .map(([k]) => k);
@@ -111,8 +109,10 @@ export async function POST(req: Request) {
       console.log("⛔ No platforms enabled, skipping.");
 
       await supabaseAdmin.from("auto_publish_logs").insert({
-        action: "social_autopost_skip",
-        message: "Skipped: no social platforms enabled",
+        run_time: now.toISOString(),
+        action: "social_skip",
+        deals_published: 0,
+        message: "No social platforms enabled.",
       });
 
       return NextResponse.json({
@@ -121,7 +121,7 @@ export async function POST(req: Request) {
       });
     }
 
-    // 4️⃣ Scheduler timing: only applies to cron calls
+    // 4️⃣ Scheduler timing – only for CRON
     const intervalMinutes: number =
       settings.social_interval_minutes ?? 60; // default 1h
 
@@ -136,7 +136,9 @@ export async function POST(req: Request) {
       );
 
       await supabaseAdmin.from("auto_publish_logs").insert({
-        action: "social_autopost_skip",
+        run_time: now.toISOString(),
+        action: "social_skip",
+        deals_published: 0,
         message: `Skipped by scheduler. Now=${now.toISOString()}, nextRun=${nextRun.toISOString()}`,
       });
 
@@ -147,7 +149,7 @@ export async function POST(req: Request) {
     const allowedStores: string[] =
       settings.allowed_stores?.length > 0
         ? settings.allowed_stores
-        : ["Amazon", "Walmart"]; // safe default
+        : ["Amazon", "Walmart"];
 
     console.log("Allowed stores for social:", allowedStores);
 
@@ -170,14 +172,32 @@ export async function POST(req: Request) {
       console.log("❌ No deals available for social posting.");
 
       await supabaseAdmin.from("auto_publish_logs").insert({
-        action: "social_autopost_skip",
-        message: "Skipped: no eligible deals found",
+        run_time: now.toISOString(),
+        action: "social_skip",
+        deals_published: 0,
+        message: "No eligible deals found.",
       });
+
+      // still set next run so it doesn't hammer forever
+      const nextSocialRun = new Date(
+        now.getTime() + intervalMinutes * 60_000
+      ).toISOString();
+
+      await supabaseAdmin
+        .from("auto_publish_state")
+        .update({
+          social_last_run: now.toISOString(),
+          social_last_count: 0,
+          social_last_deal: null,
+          social_next_run: nextSocialRun,
+          updated_at: now.toISOString(),
+        })
+        .eq("id", 1);
 
       return NextResponse.json({ skipped: true, reason: "no deals" });
     }
 
-    // 7️⃣ Pick deal (weighted by discount)
+    // 7️⃣ Pick a deal
     const deal = weightedRandom(deals);
 
     console.log(
@@ -220,7 +240,7 @@ export async function POST(req: Request) {
 
     const portraitBase64 = flyerPortrait.toString("base64");
     const squareBase64 = flyerSquare.toString("base64");
-    const storyBase64 = flyerStory.toString("base64"); // ready for future use
+    const storyBase64 = flyerStory.toString("base64"); // for future use
 
     // 🔟 Post to platforms
     const results: Record<string, any> = {};
@@ -265,7 +285,7 @@ export async function POST(req: Request) {
       );
     }
 
-    // 1️⃣1️⃣ Update scheduler state (for both cron + manual)
+    // 1️⃣1️⃣ Update scheduler state (both cron + manual)
     const nextSocialRun = new Date(
       now.getTime() + intervalMinutes * 60_000
     ).toISOString();
@@ -276,18 +296,20 @@ export async function POST(req: Request) {
         social_last_run: now.toISOString(),
         social_last_count: platformsPosted.length > 0 ? 1 : 0,
         social_last_deal: deal.id,
-        social_last_platforms: platformsPosted, // if column exists (jsonb/text[]), else ignore
         social_next_run: nextSocialRun,
         updated_at: now.toISOString(),
       })
       .eq("id", 1);
 
-    // 1️⃣2️⃣ Log entry
+    // 1️⃣2️⃣ Log entry in your existing schema
     await supabaseAdmin.from("auto_publish_logs").insert({
-      action: "social_autopost",
-      message: `Posted deal ID ${deal.id} to: ${
-        platformsPosted.length ? platformsPosted.join(", ") : "none"
-      } (forced=${force}, isCron=${isCronCall})`,
+      run_time: now.toISOString(),
+      action: "social",
+      deals_published: platformsPosted.length > 0 ? 1 : 0,
+      message:
+        platformsPosted.length > 0
+          ? `Posted deal ID ${deal.id} to: ${platformsPosted.join(", ")} (forced=${force}, isCron=${isCronCall})`
+          : `Attempted social autopost but no platforms succeeded. (forced=${force}, isCron=${isCronCall})`,
     });
 
     console.log("### SOCIAL AUTOPOST COMPLETE ###");
@@ -304,14 +326,15 @@ export async function POST(req: Request) {
   } catch (err) {
     console.error("❌ SOCIAL AUTOPOST ERROR:", err);
 
-    // Make sure errors are also logged
     try {
       await supabaseAdmin.from("auto_publish_logs").insert({
-        action: "social_autopost_error",
+        run_time: new Date().toISOString(),
+        action: "social_error",
+        deals_published: 0,
         message: String(err),
       });
     } catch (_) {
-      // ignore secondary logging errors
+      // ignore logging failure
     }
 
     return NextResponse.json(
