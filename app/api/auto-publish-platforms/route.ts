@@ -4,7 +4,7 @@ import { supabaseAdmin } from "@/lib/supabaseAdmin";
 export async function GET() {
   const { data, error } = await supabaseAdmin
     .from("auto_publish_platforms")
-    .select("*")
+    .select("x, telegram, facebook, instagram, reddit")
     .eq("id", 1)
     .single();
 
@@ -27,11 +27,11 @@ export async function POST(req: Request) {
   const { error } = await supabaseAdmin
     .from("auto_publish_platforms")
     .update({
-      x: body.x ?? false,
-      telegram: body.telegram ?? false,
-      facebook: body.facebook ?? false,
-      instagram: body.instagram ?? false,
-      reddit: body.reddit ?? false,
+      x: !!body.x,
+      telegram: !!body.telegram,
+      facebook: !!body.facebook,
+      instagram: !!body.instagram,
+      reddit: !!body.reddit,
       updated_at: new Date().toISOString(),
     })
     .eq("id", 1);

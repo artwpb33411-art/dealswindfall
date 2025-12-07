@@ -1,8 +1,6 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 
-import { pickDealForSocial } from "@/lib/social/dealSelector";
-
 import { generateFlyer } from "@/lib/social/flyerGenerator";
 import { generateFlyerSquare } from "@/lib/social/flyers/generateFlyerSquare";
 import { generateFlyerStory } from "@/lib/social/flyers/generateFlyerStory";
@@ -14,150 +12,247 @@ import { publishToInstagram } from "@/lib/social/publishers/instagram";
 
 import { saveImageToSupabase } from "@/lib/social/saveImage";
 
-// -----------------------------------------------------------------------------
-// SOCIAL AUTO-POSTING ENTRY ROUTE (CRON or Dashboard button)
-// -----------------------------------------------------------------------------
-export async function POST() {
+// Helper: weighted pick by percent_diff
+function weightedRandom(deals: any[]) {
+  const total = deals.reduce(
+    (sum, d) => sum + Math.max(d.percent_diff ?? 1, 1),
+    0
+  );
+  let r = Math.random() * total;
+  for (const d of deals) {
+    const w = Math.max(d.percent_diff ?? 1, 1);
+    if (r < w) return d;
+    r -= w;
+  }
+  return deals[0];
+}
+
+export async function POST(req: Request) {
+  const CRON_SECRET =
+    process.env.CRON_SECRET ?? "9f3e7c29f8a94e4bb9dae34234591e95";
+
+  const isCron = req.headers.get("x-cron-secret") === CRON_SECRET;
+  const force = !isCron; // manual "Publish Social Now" button
+
   try {
     console.log("###############################");
     console.log("### SOCIAL AUTOPOST STARTED ###");
     console.log("###############################");
 
-    // 1️⃣ LOAD SETTINGS & PLATFORM CONFIG
-    const [{ data: settings }, { data: platforms }] = await Promise.all([
+    // 1️⃣ Load settings, state, platforms
+    const [{ data: settings, error: settingsError },
+           { data: state, error: stateError },
+           { data: platforms, error: platformsError }] = await Promise.all([
       supabaseAdmin
         .from("auto_publish_settings")
         .select("*")
         .eq("id", 1)
         .single(),
-
+      supabaseAdmin
+        .from("auto_publish_state")
+        .select("*")
+        .eq("id", 1)
+        .single(),
       supabaseAdmin
         .from("auto_publish_platforms")
-        .select("*")
+        .select("x, telegram, facebook, instagram, reddit")
         .eq("id", 1)
         .single(),
     ]);
 
-    if (!settings) {
-      console.log("❌ No settings found.");
-      return NextResponse.json({ error: "No settings" }, { status: 500 });
+    if (settingsError || stateError || platformsError || !settings || !state) {
+      console.error("Missing settings/state/platforms", {
+        settingsError,
+        stateError,
+        platformsError,
+      });
+      return NextResponse.json(
+        { error: "Scheduler configuration missing" },
+        { status: 500 }
+      );
     }
 
-    // 2️⃣ VALIDATE SOCIAL ENABLED
+    // 2️⃣ Check if social auto-posting is enabled
     if (!settings.social_enabled) {
       console.log("⛔ Social autopost disabled.");
       return NextResponse.json({ skipped: true, reason: "disabled" });
     }
 
-    // 3️⃣ VALIDATE ANY PLATFORM ENABLED
-    const platformList = {
-      x: platforms?.x,
-      telegram: platforms?.telegram,
-      facebook: platforms?.facebook,
-      instagram: platforms?.instagram,
-    };
+    // 3️⃣ Check platforms
+    const activePlatforms = Object.entries(platforms)
+      .filter(([, v]) => !!v)
+      .map(([k]) => k);
 
-    if (!Object.values(platformList).some(Boolean)) {
-      console.log("⛔ No platforms enabled — skipping.");
-      return NextResponse.json({ skipped: true, reason: "no platforms" });
+    if (activePlatforms.length === 0) {
+      console.log("⛔ No platforms enabled, skipping.");
+      return NextResponse.json({
+        skipped: true,
+        reason: "no platforms enabled",
+      });
     }
 
-    // 4️⃣ PICK DEAL (smart selector)
-    const deal = await pickDealForSocial();
+    // 4️⃣ Scheduler timing: respect social_next_run for CRON calls
+    const now = new Date();
+    const intervalMinutes = settings.social_interval_minutes ?? 60;
 
-    if (!deal) {
-      console.log("❌ No deals available.");
+    const nextRun = state.social_next_run
+      ? new Date(state.social_next_run)
+      : null;
+
+    if (!force && nextRun && now < nextRun) {
+      console.log(
+        `⏳ Not time yet. Next social run at: ${nextRun.toISOString()}`
+      );
+      return NextResponse.json({ skipped: true, nextRun });
+    }
+
+    // 5️⃣ Allowed stores
+    const allowedStores: string[] =
+      settings.allowed_stores?.length > 0
+        ? settings.allowed_stores
+        : ["Amazon", "Walmart"];
+
+    console.log("Allowed stores for social:", allowedStores);
+
+    // 6️⃣ Fetch candidate deals (last 12 hours)
+    const since = new Date(now.getTime() - 12 * 60 * 60 * 1000).toISOString();
+
+    const { data: deals, error: dealsError } = await supabaseAdmin
+      .from("deals")
+      .select("*")
+      .eq("status", "Published")
+      .eq("exclude_from_auto", false)
+      .in("store_name", allowedStores)
+      .gte("published_at", since)
+      .order("published_at", { ascending: false })
+      .limit(100);
+
+    if (dealsError) throw dealsError;
+
+    if (!deals || deals.length === 0) {
+      console.log("❌ No deals available for social posting.");
       return NextResponse.json({ skipped: true, reason: "no deals" });
     }
 
-    console.log("🎯 Selected deal:", deal.title);
+    // 7️⃣ Pick deal (weighted)
+    const deal = weightedRandom(deals);
+    console.log(
+      "🎯 Selected deal:",
+      deal.description || deal.notes || deal.slug,
+      "| Discount:",
+      deal.percent_diff
+    );
 
-    // 5️⃣ PROCESS IMAGE
-    let finalImage = deal.image_link;
+    // 8️⃣ Prepare image
+    let finalImage: string | null = deal.image_link;
 
     if (finalImage) {
       try {
         finalImage = await saveImageToSupabase(finalImage);
       } catch (err) {
-        console.error("⚠ Error storing image, using original.", err);
+        console.error("⚠ Error storing image. Using original URL.", err);
       }
     }
 
     if (!finalImage) {
-      finalImage =
-        "https://www.dealswindfall.com/dealswindfall-logoA.png";
+      finalImage = "https://www.dealswindfall.com/dealswindfall-logoA.png";
     }
 
-    // 6️⃣ GENERATE FLYERS
+    // 9️⃣ Generate flyers
     console.log("🖨 Generating flyers...");
 
-    const flyerPortrait = await generateFlyer({ ...deal, image_link: finalImage });
-    const flyerSquare = await generateFlyerSquare({ ...deal, image_link: finalImage });
-    const flyerStory = await generateFlyerStory({ ...deal, image_link: finalImage });
+    const flyerPortrait = await generateFlyer({
+      ...deal,
+      image_link: finalImage,
+    });
+    const flyerSquare = await generateFlyerSquare({
+      ...deal,
+      image_link: finalImage,
+    });
+    const flyerStory = await generateFlyerStory({
+      ...deal,
+      image_link: finalImage,
+    });
 
     const portraitBase64 = flyerPortrait.toString("base64");
     const squareBase64 = flyerSquare.toString("base64");
-    const storyBase64 = flyerStory.toString("base64");
+    const storyBase64 = flyerStory.toString("base64"); // not used yet but ready
 
-    // 7️⃣ POST TO ENABLED PLATFORMS
-    let results: any = {};
+    // 🔟 Post to platforms
+    const results: Record<string, any> = {};
+    let platformsPosted: string[] = [];
 
-    async function tryPost(platform: string, fn: () => Promise<any>) {
+    async function tryPost(name: string, fn: () => Promise<any>) {
       try {
         const res = await fn();
-        console.log(`✅ Posted to ${platform}`);
-        results[platform] = res;
+        console.log(`✅ Posted to ${name}`);
+        results[name] = res;
+        platformsPosted.push(name);
       } catch (err) {
-        console.error(`❌ ${platform.toUpperCase()} ERROR:`, err);
-        results[platform] = { error: String(err) };
+        console.error(`❌ ${name.toUpperCase()} ERROR:`, err);
+        results[name] = { error: String(err) };
       }
     }
 
-    if (platforms.x)
-      await tryPost("x", () => publishToX(deal.title, squareBase64));
+    if (platforms.x) {
+      await tryPost("x", () => publishToX(deal.description ?? deal.notes ?? "", squareBase64));
+    }
 
-    if (platforms.telegram)
-      await tryPost("telegram", () => publishToTelegram(deal.title, squareBase64));
+    if (platforms.telegram) {
+      await tryPost("telegram", () =>
+        publishToTelegram(deal.description ?? deal.notes ?? "", squareBase64)
+      );
+    }
 
-    if (platforms.facebook)
-      await tryPost("facebook", () => publishToFacebook(deal.title, portraitBase64));
+    if (platforms.facebook) {
+      await tryPost("facebook", () =>
+        publishToFacebook(deal.description ?? deal.notes ?? "", portraitBase64)
+      );
+    }
 
-    if (platforms.instagram)
-      await tryPost("instagram", () => publishToInstagram(deal.title, portraitBase64));
+    if (platforms.instagram) {
+      await tryPost("instagram", () =>
+        publishToInstagram(deal.description ?? deal.notes ?? "", portraitBase64)
+      );
+    }
 
-    // 8️⃣ LOG ENTRY
-    await supabaseAdmin.from("auto_publish_logs").insert({
-      action: "social_autopost",
-      message: `Posted deal ID ${deal.id} to social platforms`,
-    });
-
-    // 9️⃣ UPDATE AUTO-PUBLISH STATE (FIXES DASHBOARD)
-    const now = new Date();
-    const nextRun = new Date(now.getTime() + settings.social_interval_minutes * 60000);
+    // 1️⃣1️⃣ Update scheduler state
+    const nextSocialRun = new Date(
+      now.getTime() + intervalMinutes * 60_000
+    ).toISOString();
 
     await supabaseAdmin
       .from("auto_publish_state")
       .update({
         social_last_run: now.toISOString(),
-        social_last_deal: deal.id,
-        social_next_run: nextRun.toISOString(),
         social_last_count: 1,
+        social_last_deal: deal.id,
+        social_next_run: nextSocialRun,
         updated_at: now.toISOString(),
       })
       .eq("id", 1);
 
-    console.log("### SOCIAL AUTOPOST COMPLETE ###");
-
-    // 🔟 RETURN SUCCESS
-    return NextResponse.json({
-      success: true,
-      deal,
-      results,
-      nextRun,
+    // 1️⃣2️⃣ Log entry
+    await supabaseAdmin.from("auto_publish_logs").insert({
+      action: "social_autopost",
+      message: `Posted deal ID ${deal.id} to: ${platformsPosted.join(", ")}`,
     });
 
+    console.log("### SOCIAL AUTOPOST COMPLETE ###");
+
+    return NextResponse.json({
+      success: true,
+      deal_id: deal.id,
+      platforms: platformsPosted,
+      nextRun: nextSocialRun,
+      results,
+      forced: force,
+    });
   } catch (err) {
     console.error("❌ SOCIAL AUTOPOST ERROR:", err);
-    return NextResponse.json({ error: String(err) }, { status: 500 });
+    return NextResponse.json(
+      { error: String(err) },
+      { status: 500 }
+    );
   }
 }
