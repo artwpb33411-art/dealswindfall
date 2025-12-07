@@ -53,26 +53,37 @@ export async function generateFlyer(deal: SelectedDeal): Promise<Buffer> {
   ctx.fillStyle = "#ffffff";
   ctx.fillRect(0, 0, WIDTH, HEIGHT);
 
-  // TITLE
-  ctx.fillStyle = "#111827";
-  let fontSize = 56;
-  let lines: string[] = [];
+  // TITLE (SAFE VERSION)
+ctx.fillStyle = "#111827";
 
-  while (fontSize >= 34) {
-    ctx.font = `700 ${fontSize}px Inter`;
-    lines = wrapLines(ctx, deal.title, 900, 2);
-    if (lines.length <= 2) break;
-    fontSize -= 2;
-  }
+const safeTitle =
+  deal.title ||
+  deal.description ||
+  deal.notes ||
+  deal.slug ||
+  "Hot Deal!";
 
-  ctx.textAlign = "center";
-  let y = 130;
-  const lineHeight = fontSize + 10;
+let fontSize = 56;
+let lines: string[] = [];
 
-  for (const line of lines) {
-    ctx.fillText(line, WIDTH / 2, y);
-    y += lineHeight;
-  }
+while (fontSize >= 34) {
+  ctx.font = `700 ${fontSize}px Inter`;
+
+  // wrapLines always receives a string now
+  lines = wrapLines(ctx, safeTitle, 900, 2);
+
+  if (lines.length <= 2) break;
+  fontSize -= 2;
+}
+
+ctx.textAlign = "center";
+let y = 130;
+const lineHeight = fontSize + 10;
+
+for (const line of lines) {
+  ctx.fillText(line, WIDTH / 2, y);
+  y += lineHeight;
+}
 
   // PRODUCT IMAGE
   const safeImageUrl =
