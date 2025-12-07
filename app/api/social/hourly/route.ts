@@ -14,6 +14,9 @@ import { publishToInstagram } from "@/lib/social/publishers/instagram";
 
 import { saveImageToSupabase } from "@/lib/social/saveImage";
 
+// -----------------------------------------------------------------------------
+// SOCIAL AUTO-POSTING ENTRY ROUTE (CRON or Dashboard button)
+// -----------------------------------------------------------------------------
 export async function POST() {
   try {
     console.log("###############################");
@@ -42,7 +45,7 @@ export async function POST() {
 
     // 2️⃣ VALIDATE SOCIAL ENABLED
     if (!settings.social_enabled) {
-      console.log("⛔ Social autopost disabled, exiting.");
+      console.log("⛔ Social autopost disabled.");
       return NextResponse.json({ skipped: true, reason: "disabled" });
     }
 
@@ -56,27 +59,27 @@ export async function POST() {
 
     if (!Object.values(platformList).some(Boolean)) {
       console.log("⛔ No platforms enabled — skipping.");
-      return NextResponse.json({ skipped: true, reason: "no platforms enabled" });
+      return NextResponse.json({ skipped: true, reason: "no platforms" });
     }
 
-    // 4️⃣ PICK DEAL (Using new dealSelector with allowed stores + fallback)
+    // 4️⃣ PICK DEAL (smart selector)
     const deal = await pickDealForSocial();
 
     if (!deal) {
-      console.log("❌ No deals available for social posting.");
-      return NextResponse.json({ skipped: true, reason: "no deals found" });
+      console.log("❌ No deals available.");
+      return NextResponse.json({ skipped: true, reason: "no deals" });
     }
 
     console.log("🎯 Selected deal:", deal.title);
 
-    // 5️⃣ IMAGE VALIDATION & STORAGE
+    // 5️⃣ PROCESS IMAGE
     let finalImage = deal.image_link;
 
     if (finalImage) {
       try {
         finalImage = await saveImageToSupabase(finalImage);
       } catch (err) {
-        console.error("⚠ Image store failed. Using original.", err);
+        console.error("⚠ Error storing image, using original.", err);
       }
     }
 
@@ -110,41 +113,49 @@ export async function POST() {
       }
     }
 
-    if (platforms.x) {
+    if (platforms.x)
       await tryPost("x", () => publishToX(deal.title, squareBase64));
-    }
 
-    if (platforms.telegram) {
-      await tryPost("telegram", () =>
-        publishToTelegram(deal.title, squareBase64)
-      );
-    }
+    if (platforms.telegram)
+      await tryPost("telegram", () => publishToTelegram(deal.title, squareBase64));
 
-    if (platforms.facebook) {
-      await tryPost("facebook", () =>
-        publishToFacebook(deal.title, portraitBase64)
-      );
-    }
+    if (platforms.facebook)
+      await tryPost("facebook", () => publishToFacebook(deal.title, portraitBase64));
 
-    if (platforms.instagram) {
-      await tryPost("instagram", () =>
-        publishToInstagram(deal.title, portraitBase64)
-      );
-    }
+    if (platforms.instagram)
+      await tryPost("instagram", () => publishToInstagram(deal.title, portraitBase64));
 
-    // 8️⃣ LOG RESULTS
+    // 8️⃣ LOG ENTRY
     await supabaseAdmin.from("auto_publish_logs").insert({
       action: "social_autopost",
       message: `Posted deal ID ${deal.id} to social platforms`,
     });
 
+    // 9️⃣ UPDATE AUTO-PUBLISH STATE (FIXES DASHBOARD)
+    const now = new Date();
+    const nextRun = new Date(now.getTime() + settings.social_interval_minutes * 60000);
+
+    await supabaseAdmin
+      .from("auto_publish_state")
+      .update({
+        social_last_run: now.toISOString(),
+        social_last_deal: deal.id,
+        social_next_run: nextRun.toISOString(),
+        social_last_count: 1,
+        updated_at: now.toISOString(),
+      })
+      .eq("id", 1);
+
     console.log("### SOCIAL AUTOPOST COMPLETE ###");
 
+    // 🔟 RETURN SUCCESS
     return NextResponse.json({
       success: true,
       deal,
       results,
+      nextRun,
     });
+
   } catch (err) {
     console.error("❌ SOCIAL AUTOPOST ERROR:", err);
     return NextResponse.json({ error: String(err) }, { status: 500 });
