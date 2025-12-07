@@ -1,0 +1,204 @@
+"use client";
+import AutoPublishLogs from "./AutoPublishLogs";
+
+import { useEffect, useState } from "react";
+import { Clock, CheckCircle, XCircle, RefreshCcw, Zap, Settings2 } from "lucide-react";
+
+export default function AutoPublishPanel() {
+  const [status, setStatus] = useState<any>(null);
+  const [loadingStatus, setLoadingStatus] = useState(true);
+
+  const [platforms, setPlatforms] = useState({
+    x: true,
+    telegram: true,
+    facebook: true,
+    instagram: false,
+  });
+
+  const [savingPlatforms, setSavingPlatforms] = useState(false);
+  const [actionMessage, setActionMessage] = useState("");
+
+  // Load scheduler status
+  async function loadStatus() {
+    try {
+      const res = await fetch("/api/auto-publish-status");
+      const data = await res.json();
+      setStatus(data);
+    } catch (e) {
+      setStatus(null);
+    } finally {
+      setLoadingStatus(false);
+    }
+  }
+
+  useEffect(() => {
+    loadStatus();
+  }, []);
+
+  // Save platform preferences
+  async function savePlatforms() {
+    setSavingPlatforms(true);
+    try {
+      await fetch("/api/auto-publish-platforms", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(platforms),
+      });
+      setActionMessage("✔ Platforms updated");
+    } catch (e) {
+      setActionMessage("✖ Failed to save platforms");
+    } finally {
+      setSavingPlatforms(false);
+      setTimeout(() => setActionMessage(""), 4000);
+    }
+  }
+
+  async function triggerAction(type: string) {
+    try {
+      await fetch("/api/auto-publish-action", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: type }),
+      });
+
+      if (type === "publish_now") setActionMessage("🚀 Deals published instantly");
+      if (type === "skip_next") setActionMessage("⏭ Next publish skipped");
+      if (type === "reset") setActionMessage("🔄 Scheduler reset");
+
+      loadStatus();
+    } catch (e) {
+      setActionMessage("✖ Action failed");
+    }
+
+    setTimeout(() => setActionMessage(""), 4000);
+  }
+
+  return (
+    <div className="space-y-8">
+
+      {actionMessage && (
+        <div className="p-3 bg-blue-100 text-blue-700 rounded shadow-sm text-center">
+          {actionMessage}
+        </div>
+      )}
+
+      {/* 🟦 SCHEDULER OVERVIEW CARD */}
+      <div className="p-6 bg-white rounded-lg shadow border">
+        <h2 className="text-xl font-semibold text-blue-700 mb-4 flex items-center gap-2">
+          <Clock className="w-5 h-5" />
+          Scheduler Overview
+        </h2>
+
+        {loadingStatus ? (
+          <p className="text-gray-500">Loading scheduler...</p>
+        ) : (
+          <div className="space-y-3 text-gray-800">
+            <p>
+              <strong>Status:</strong>{" "}
+              {status?.enabled ? (
+                <span className="text-green-600 font-semibold flex items-center gap-1">
+                  <CheckCircle className="w-4 h-4" /> Active
+                </span>
+              ) : (
+                <span className="text-red-600 font-semibold flex items-center gap-1">
+                  <XCircle className="w-4 h-4" /> Disabled
+                </span>
+              )}
+            </p>
+
+            <p>
+              <strong>Last Run:</strong>{" "}
+              {status?.last_run
+                ? new Date(status.last_run).toLocaleString()
+                : "Never"}
+            </p>
+
+            <p>
+              <strong>Next Scheduled Run:</strong>{" "}
+              {status?.next_run
+                ? new Date(status.next_run).toLocaleString()
+                : "Not Scheduled"}
+            </p>
+
+            <p>
+              <strong>Deals Published Last Time:</strong> {status?.last_count ?? 0}
+            </p>
+          </div>
+        )}
+      </div>
+
+      {/* 🟩 PLATFORM SETTINGS CARD */}
+      <div className="p-6 bg-white rounded-lg shadow border">
+        <h2 className="text-xl font-semibold text-blue-700 mb-4 flex items-center gap-2">
+          <Settings2 className="w-5 h-5" />
+          Platforms
+        </h2>
+
+        <div className="grid grid-cols-2 gap-4">
+          {Object.keys(platforms).map((key) => (
+            <label
+              key={key}
+              className="flex items-center gap-3 bg-gray-50 p-3 rounded border hover:bg-gray-100 cursor-pointer"
+            >
+              <input
+                type="checkbox"
+                checked={platforms[key as keyof typeof platforms]}
+                onChange={(e) =>
+                  setPlatforms({ ...platforms, [key]: e.target.checked })
+                }
+                className="w-5 h-5"
+              />
+              <span className="capitalize text-gray-800">{key}</span>
+            </label>
+          ))}
+        </div>
+
+        <button
+          disabled={savingPlatforms}
+          onClick={savePlatforms}
+          className="mt-5 px-5 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50"
+        >
+          {savingPlatforms ? "Saving..." : "Save Platform Settings"}
+        </button>
+      </div>
+
+      {/* 🟧 MANUAL ACTIONS CARD */}
+      <div className="p-6 bg-white rounded-lg shadow border">
+        <h2 className="text-xl font-semibold text-blue-700 mb-4 flex items-center gap-2">
+          <Zap className="w-5 h-5" />
+          Manual Actions
+        </h2>
+
+        <div className="flex flex-wrap gap-4">
+          <button
+            onClick={() => triggerAction("publish_now")}
+            className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 flex items-center gap-2"
+          >
+            <Zap className="w-4 h-4" />
+            Publish Now
+          </button>
+
+          <button
+            onClick={() => triggerAction("skip_next")}
+            className="px-4 py-2 bg-yellow-500 text-white rounded hover:bg-yellow-600 flex items-center gap-2"
+          >
+            <Clock className="w-4 h-4" />
+            Skip Next
+          </button>
+
+          <button
+            onClick={() => triggerAction("reset")}
+            className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 flex items-center gap-2"
+          >
+            <RefreshCcw className="w-4 h-4" />
+            Reset Scheduler
+          </button>
+        </div>
+      </div>
+
+      {/* LOGS PANEL */}
+<AutoPublishLogs />
+
+    </div>
+  );
+}
