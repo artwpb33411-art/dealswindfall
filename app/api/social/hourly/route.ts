@@ -199,6 +199,14 @@ export async function POST(req: Request) {
 
     // 7️⃣ Pick a deal
     const deal = weightedRandom(deals);
+    // 🔧 Normalize deal fields for flyer
+const normalizedDeal = {
+  ...deal,
+  price: deal.current_price ? Number(deal.current_price) : null,
+  old_price: deal.old_price ? Number(deal.old_price) : null,
+  percent_diff: deal.percent_diff ? Number(deal.percent_diff) : null,
+};
+
 
     console.log(
       "🎯 Selected deal:",
@@ -226,15 +234,15 @@ export async function POST(req: Request) {
     console.log("🖨 Generating flyers...");
 
     const flyerPortrait = await generateFlyer({
-      ...deal,
+       ...normalizedDeal,
       image_link: finalImage,
     });
     const flyerSquare = await generateFlyerSquare({
-      ...deal,
+       ...normalizedDeal,
       image_link: finalImage,
     });
     const flyerStory = await generateFlyerStory({
-      ...deal,
+       ...normalizedDeal,
       image_link: finalImage,
     });
 
