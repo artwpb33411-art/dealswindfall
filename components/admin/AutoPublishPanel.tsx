@@ -1,30 +1,46 @@
 "use client";
-import AutoPublishLogs from "./AutoPublishLogs";
 
+import AutoPublishLogs from "./AutoPublishLogs";
 import { useEffect, useState } from "react";
-import { Clock, CheckCircle, XCircle, RefreshCcw, Zap, Settings2 } from "lucide-react";
+import {
+  Clock,
+  CheckCircle,
+  XCircle,
+  RefreshCcw,
+  Zap,
+  Settings2,
+} from "lucide-react";
 
 export default function AutoPublishPanel() {
   const [status, setStatus] = useState<any>(null);
   const [loadingStatus, setLoadingStatus] = useState(true);
 
-  const [platforms, setPlatforms] = useState({
-    x: true,
-    telegram: true,
-    facebook: true,
-    instagram: false,
-  });
-
+  const [platforms, setPlatforms] = useState<any>(null);
   const [savingPlatforms, setSavingPlatforms] = useState(false);
+
   const [actionMessage, setActionMessage] = useState("");
 
-  // Load scheduler status
+  // -----------------------
+  // Load platform settings
+  // -----------------------
+  useEffect(() => {
+    async function loadPlatforms() {
+      const res = await fetch("/api/auto-publish-platforms");
+      const data = await res.json();
+      setPlatforms(data);
+    }
+    loadPlatforms();
+  }, []);
+
+  // -----------------------
+  // Load scheduler state
+  // -----------------------
   async function loadStatus() {
     try {
       const res = await fetch("/api/auto-publish-status");
       const data = await res.json();
       setStatus(data);
-    } catch (e) {
+    } catch {
       setStatus(null);
     } finally {
       setLoadingStatus(false);
@@ -35,17 +51,26 @@ export default function AutoPublishPanel() {
     loadStatus();
   }, []);
 
-  // Save platform preferences
+  // -----------------------
+  // Save platforms
+  // -----------------------
   async function savePlatforms() {
+    if (!platforms) return;
+
     setSavingPlatforms(true);
     try {
-      await fetch("/api/auto-publish-platforms", {
+      const res = await fetch("/api/auto-publish-platforms", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(platforms),
       });
-      setActionMessage("✔ Platforms updated");
-    } catch (e) {
+
+      if (res.ok) {
+        setActionMessage("✔ Platforms updated");
+      } else {
+        setActionMessage("✖ Failed to save platforms");
+      }
+    } catch {
       setActionMessage("✖ Failed to save platforms");
     } finally {
       setSavingPlatforms(false);
@@ -53,6 +78,9 @@ export default function AutoPublishPanel() {
     }
   }
 
+  // -----------------------
+  // Manual actions
+  // -----------------------
   async function triggerAction(type: string) {
     try {
       await fetch("/api/auto-publish-action", {
@@ -61,32 +89,32 @@ export default function AutoPublishPanel() {
         body: JSON.stringify({ action: type }),
       });
 
-      if (type === "publish_now") setActionMessage("🚀 Deals published instantly");
-      if (type === "skip_next") setActionMessage("⏭ Next publish skipped");
+      if (type === "publish_now") setActionMessage("🚀 Social post triggered");
+      if (type === "skip_next") setActionMessage("⏭ Next cycle skipped");
       if (type === "reset") setActionMessage("🔄 Scheduler reset");
 
       loadStatus();
-    } catch (e) {
+    } catch {
       setActionMessage("✖ Action failed");
     }
-
     setTimeout(() => setActionMessage(""), 4000);
   }
 
   return (
     <div className="space-y-8">
-
       {actionMessage && (
         <div className="p-3 bg-blue-100 text-blue-700 rounded shadow-sm text-center">
           {actionMessage}
         </div>
       )}
 
-      {/* 🟦 SCHEDULER OVERVIEW CARD */}
+      {/* ---------------------------
+         SCHEDULER OVERVIEW CARD
+      ---------------------------- */}
       <div className="p-6 bg-white rounded-lg shadow border">
         <h2 className="text-xl font-semibold text-blue-700 mb-4 flex items-center gap-2">
           <Clock className="w-5 h-5" />
-          Scheduler Overview
+          Social Auto-Post Scheduler
         </h2>
 
         {loadingStatus ? (
@@ -107,62 +135,73 @@ export default function AutoPublishPanel() {
             </p>
 
             <p>
-              <strong>Last Run:</strong>{" "}
-              {status?.last_run
-                ? new Date(status.last_run).toLocaleString()
+              <strong>Last Social Post:</strong>{" "}
+              {status?.social_last_run
+                ? new Date(status.social_last_run).toLocaleString()
                 : "Never"}
             </p>
 
             <p>
               <strong>Next Scheduled Run:</strong>{" "}
-              {status?.next_run
-                ? new Date(status.next_run).toLocaleString()
+              {status?.social_next_run
+                ? new Date(status.social_next_run).toLocaleString()
                 : "Not Scheduled"}
             </p>
 
             <p>
-              <strong>Deals Published Last Time:</strong> {status?.last_count ?? 0}
+              <strong>Platform Used Last Time:</strong>{" "}
+              {status?.social_last_deal ?? "None"}
             </p>
           </div>
         )}
       </div>
 
-      {/* 🟩 PLATFORM SETTINGS CARD */}
+      {/* ---------------------------
+         PLATFORM SETTINGS
+      ---------------------------- */}
       <div className="p-6 bg-white rounded-lg shadow border">
         <h2 className="text-xl font-semibold text-blue-700 mb-4 flex items-center gap-2">
           <Settings2 className="w-5 h-5" />
           Platforms
         </h2>
 
-        <div className="grid grid-cols-2 gap-4">
-          {Object.keys(platforms).map((key) => (
-            <label
-              key={key}
-              className="flex items-center gap-3 bg-gray-50 p-3 rounded border hover:bg-gray-100 cursor-pointer"
-            >
-              <input
-                type="checkbox"
-                checked={platforms[key as keyof typeof platforms]}
-                onChange={(e) =>
-                  setPlatforms({ ...platforms, [key]: e.target.checked })
-                }
-                className="w-5 h-5"
-              />
-              <span className="capitalize text-gray-800">{key}</span>
-            </label>
-          ))}
-        </div>
+        {!platforms ? (
+          <p className="text-gray-500">Loading platforms...</p>
+        ) : (
+          <>
+            <div className="grid grid-cols-2 gap-4">
+              {Object.keys(platforms).map((key) => (
+                <label
+                  key={key}
+                  className="flex items-center gap-3 bg-gray-50 p-3 rounded border hover:bg-gray-100 cursor-pointer"
+                >
+                  <input
+                    type="checkbox"
+                    checked={platforms[key]}
+                    onChange={(e) =>
+                      setPlatforms({ ...platforms, [key]: e.target.checked })
+                    }
+                    className="w-5 h-5"
+                  />
+                  <span className="capitalize text-gray-800">{key}</span>
+                </label>
+              ))}
+            </div>
 
-        <button
-          disabled={savingPlatforms}
-          onClick={savePlatforms}
-          className="mt-5 px-5 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50"
-        >
-          {savingPlatforms ? "Saving..." : "Save Platform Settings"}
-        </button>
+            <button
+              disabled={savingPlatforms}
+              onClick={savePlatforms}
+              className="mt-5 px-5 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50"
+            >
+              {savingPlatforms ? "Saving..." : "Save Platform Settings"}
+            </button>
+          </>
+        )}
       </div>
 
-      {/* 🟧 MANUAL ACTIONS CARD */}
+      {/* ---------------------------
+         MANUAL ACTIONS
+      ---------------------------- */}
       <div className="p-6 bg-white rounded-lg shadow border">
         <h2 className="text-xl font-semibold text-blue-700 mb-4 flex items-center gap-2">
           <Zap className="w-5 h-5" />
@@ -196,9 +235,10 @@ export default function AutoPublishPanel() {
         </div>
       </div>
 
-      {/* LOGS PANEL */}
-<AutoPublishLogs />
-
+      {/* ---------------------------
+         LOGS
+      ---------------------------- */}
+      <AutoPublishLogs />
     </div>
   );
 }
