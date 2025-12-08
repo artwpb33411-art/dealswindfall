@@ -1,6 +1,9 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 
+import type { SelectedDeal } from "@/lib/social/types";
+import { buildCaption } from "@/lib/social/captionBuilder";
+
 import { generateFlyer } from "@/lib/social/flyerGenerator";
 import { generateFlyerSquare } from "@/lib/social/flyers/generateFlyerSquare";
 import { generateFlyerStory } from "@/lib/social/flyers/generateFlyerStory";
@@ -33,7 +36,7 @@ export async function POST(req: Request) {
     process.env.CRON_SECRET ?? "9f3e7c29f8a94e4bb9dae34234591e95";
 
   const isCronCall = req.headers.get("x-cron-secret") === CRON_SECRET;
-  const force = !isCronCall; // Option A: manual calls always force run
+  const force = !isCronCall; // Manual "Publish Social Now" always forces a run
 
   const now = new Date();
 
@@ -121,14 +124,11 @@ export async function POST(req: Request) {
       });
     }
 
-    // 4️⃣ Scheduler timing – only for CRON
-    const intervalMinutes: number =
-      settings.social_interval_minutes ?? 60; // default 1h
+    // 4️⃣ Scheduler timing – only for CRON calls
+    const intervalMinutes: number = settings.social_interval_minutes ?? 60;
 
     const nextRun =
-      state.social_next_run != null
-        ? new Date(state.social_next_run)
-        : null;
+      state.social_next_run != null ? new Date(state.social_next_run) : null;
 
     if (isCronCall && nextRun && now < nextRun) {
       console.log(
@@ -156,9 +156,26 @@ export async function POST(req: Request) {
     // 6️⃣ Fetch candidate deals (last 12 hours)
     const since = new Date(now.getTime() - 12 * 60 * 60 * 1000).toISOString();
 
-    const { data: deals, error: dealsError } = await supabaseAdmin
+    const { data: rawDeals, error: dealsError } = await supabaseAdmin
       .from("deals")
-      .select("*")
+      .select(
+        `
+        id,
+        description,
+        notes,
+        current_price,
+        old_price,
+        price_diff,
+        percent_diff,
+        image_link,
+        product_link,
+        review_link,
+        store_name,
+        slug,
+        published_at,
+        exclude_from_auto
+      `
+      )
       .eq("status", "Published")
       .eq("exclude_from_auto", false)
       .in("store_name", allowedStores)
@@ -168,7 +185,7 @@ export async function POST(req: Request) {
 
     if (dealsError) throw dealsError;
 
-    if (!deals || deals.length === 0) {
+    if (!rawDeals || rawDeals.length === 0) {
       console.log("❌ No deals available for social posting.");
 
       await supabaseAdmin.from("auto_publish_logs").insert({
@@ -178,7 +195,6 @@ export async function POST(req: Request) {
         message: "No eligible deals found.",
       });
 
-      // still set next run so it doesn't hammer forever
       const nextSocialRun = new Date(
         now.getTime() + intervalMinutes * 60_000
       ).toISOString();
@@ -197,20 +213,33 @@ export async function POST(req: Request) {
       return NextResponse.json({ skipped: true, reason: "no deals" });
     }
 
-    // 7️⃣ Pick a deal
-    const deal = weightedRandom(deals);
-    // 🔧 Normalize deal fields for flyer
-const normalizedDeal = {
-  ...deal,
-  price: deal.current_price ? Number(deal.current_price) : null,
-  old_price: deal.old_price ? Number(deal.old_price) : null,
-  percent_diff: deal.percent_diff ? Number(deal.percent_diff) : null,
-};
+    // 7️⃣ Pick a raw DB row and map → SelectedDeal
+    const raw = weightedRandom(rawDeals);
 
+    const deal: SelectedDeal = {
+      id: raw.id,
+      title: raw.description ?? "Untitled deal",
+      description: raw.notes ?? null,
+      image_link: raw.image_link ?? null,
+      slug: raw.slug ?? null,
+      store_name: raw.store_name ?? null,
+
+      price: raw.current_price ?? null,
+      old_price: raw.old_price ?? null,
+      percent_diff: raw.percent_diff ?? null,
+
+      current_price: raw.current_price ?? null,
+      price_diff: raw.price_diff ?? null,
+      product_link: raw.product_link ?? null,
+      review_link: raw.review_link ?? null,
+    };
+
+    const logTitle =
+      deal.title || deal.description || deal.slug || `Deal #${deal.id}`;
 
     console.log(
       "🎯 Selected deal:",
-      deal.description || deal.notes || deal.slug,
+      logTitle,
       "| Discount:",
       deal.percent_diff
     );
@@ -234,30 +263,30 @@ const normalizedDeal = {
     console.log("🖨 Generating flyers...");
 
     const flyerPortrait = await generateFlyer({
-       ...normalizedDeal,
+      ...deal,
       image_link: finalImage,
     });
+
     const flyerSquare = await generateFlyerSquare({
-       ...normalizedDeal,
+      ...deal,
       image_link: finalImage,
     });
+
     const flyerStory = await generateFlyerStory({
-       ...normalizedDeal,
+      ...deal,
       image_link: finalImage,
     });
 
     const portraitBase64 = flyerPortrait.toString("base64");
     const squareBase64 = flyerSquare.toString("base64");
-    const storyBase64 = flyerStory.toString("base64"); // for future use
+    const storyBase64 = flyerStory.toString("base64"); // for future (stories)
+
+    // 🔟 Build captions (long + short + URL)
+    const social = buildCaption(deal);
 
     // 🔟 Post to platforms
     const results: Record<string, any> = {};
     const platformsPosted: string[] = [];
-
-    const caption =
-      deal.description ??
-      deal.notes ??
-      `Hot deal from ${deal.store_name || "DealsWindfall"}`;
 
     async function tryPost(name: string, fn: () => Promise<any>) {
       try {
@@ -272,28 +301,30 @@ const normalizedDeal = {
     }
 
     if (platforms.x) {
-      await tryPost("x", () => publishToX(caption, squareBase64));
+      // X prefers shorter caption
+      await tryPost("x", () => publishToX(social.short, squareBase64));
     }
 
     if (platforms.telegram) {
+      // Telegram can use long caption
       await tryPost("telegram", () =>
-        publishToTelegram(caption, squareBase64)
+        publishToTelegram(social.text, squareBase64)
       );
     }
 
     if (platforms.facebook) {
       await tryPost("facebook", () =>
-        publishToFacebook(caption, portraitBase64)
+        publishToFacebook(social.text, portraitBase64)
       );
     }
 
     if (platforms.instagram) {
       await tryPost("instagram", () =>
-        publishToInstagram(caption, portraitBase64)
+        publishToInstagram(social.text, portraitBase64)
       );
     }
 
-    // 1️⃣1️⃣ Update scheduler state (both cron + manual)
+    // 1️⃣1️⃣ Update scheduler state (CRON and manual both)
     const nextSocialRun = new Date(
       now.getTime() + intervalMinutes * 60_000
     ).toISOString();
@@ -309,14 +340,16 @@ const normalizedDeal = {
       })
       .eq("id", 1);
 
-    // 1️⃣2️⃣ Log entry in your existing schema
+    // 1️⃣2️⃣ Log entry
     await supabaseAdmin.from("auto_publish_logs").insert({
       run_time: now.toISOString(),
       action: "social",
       deals_published: platformsPosted.length > 0 ? 1 : 0,
       message:
         platformsPosted.length > 0
-          ? `Posted deal ID ${deal.id} to: ${platformsPosted.join(", ")} (forced=${force}, isCron=${isCronCall})`
+          ? `Posted deal ID ${deal.id} to: ${platformsPosted.join(
+              ", "
+            )} (forced=${force}, isCron=${isCronCall})`
           : `Attempted social autopost but no platforms succeeded. (forced=${force}, isCron=${isCronCall})`,
     });
 
@@ -341,13 +374,10 @@ const normalizedDeal = {
         deals_published: 0,
         message: String(err),
       });
-    } catch (_) {
+    } catch {
       // ignore logging failure
     }
 
-    return NextResponse.json(
-      { error: String(err) },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: String(err) }, { status: 500 });
   }
 }

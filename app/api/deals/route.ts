@@ -281,72 +281,94 @@ export async function GET() {
 }
 
 /* -------------------------------------------------------------
-   PUT → Update existing deal (handle snake + camel)
+   PUT → Update existing deal (handle snake + camel + publish logic)
 ------------------------------------------------------------- */
 export async function PUT(req: Request) {
   try {
     const body = await req.json();
-    const { id, ...updateFields } = body;
+    const { id, status, ...updateFields } = body;
 
     if (!id) throw new Error("Missing deal ID.");
 
-    // Map possible camelCase to snake_case if they come in that way
-    if ("currentPrice" in updateFields) {
-      (updateFields as any).current_price = Number(updateFields.currentPrice);
-      delete (updateFields as any).currentPrice;
-    }
-    if ("oldPrice" in updateFields) {
-      (updateFields as any).old_price = Number(updateFields.oldPrice);
-      delete (updateFields as any).oldPrice;
-    }
-    if ("storeName" in updateFields) {
-      (updateFields as any).store_name = updateFields.storeName;
-      delete (updateFields as any).storeName;
-    }
-    if ("imageLink" in updateFields) {
-      (updateFields as any).image_link = updateFields.imageLink;
-      delete (updateFields as any).imageLink;
-    }
-    if ("productLink" in updateFields) {
-      (updateFields as any).product_link = updateFields.productLink;
-      delete (updateFields as any).productLink;
-    }
-    if ("reviewLink" in updateFields) {
-      (updateFields as any).review_link = updateFields.reviewLink;
-      delete (updateFields as any).reviewLink;
-    }
-    if ("couponCode" in updateFields) {
-      (updateFields as any).coupon_code = updateFields.couponCode;
-      delete (updateFields as any).couponCode;
-    }
-    if ("shippingCost" in updateFields) {
-      (updateFields as any).shipping_cost = updateFields.shippingCost;
-      delete (updateFields as any).shippingCost;
-    }
-    if ("expireDate" in updateFields) {
-      (updateFields as any).expire_date = updateFields.expireDate;
-      delete (updateFields as any).expireDate;
-    }
-    if ("holidayTag" in updateFields) {
-      (updateFields as any).holiday_tag = updateFields.holidayTag;
-      delete (updateFields as any).holidayTag;
+    /* ---------------------------------------------------------
+       UNIFIED CAMEL → SNAKE CASE MAPPING
+    --------------------------------------------------------- */
+    const fieldMap: Record<string, string> = {
+      currentPrice: "current_price",
+      oldPrice: "old_price",
+      storeName: "store_name",
+      imageLink: "image_link",
+      productLink: "product_link",
+      reviewLink: "review_link",
+      couponCode: "coupon_code",
+      shippingCost: "shipping_cost",
+      expireDate: "expire_date",
+      holidayTag: "holiday_tag",
+    };
+
+    for (const key in fieldMap) {
+      if (key in updateFields) {
+        const newKey = fieldMap[key];
+
+        // Convert number fields properly
+        if (
+          key === "currentPrice" ||
+          key === "oldPrice" ||
+          key === "shippingCost"
+        ) {
+          updateFields[newKey] = Number(updateFields[key]);
+        } else {
+          updateFields[newKey] = updateFields[key];
+        }
+
+        delete updateFields[key];
+      }
     }
 
-    // Recalculate discount if prices present
-    const oldP = parseFloat(
-      (updateFields as any).old_price ?? body.old_price ?? 0
-    );
-    const currP = parseFloat(
-      (updateFields as any).current_price ?? body.current_price ?? 0
-    );
+    /* ---------------------------------------------------------
+       STATUS LOGIC — Manual Publish / Unpublish
+    --------------------------------------------------------- */
+    if (status === "Published") {
+      updateFields.status = "Published";
+      updateFields.published_at = new Date().toISOString();
+    } else if (status === "Draft") {
+      updateFields.status = "Draft";
+      updateFields.published_at = null;
+    }
+
+    /* ---------------------------------------------------------
+       RECOMPUTE PRICE METRICS
+    --------------------------------------------------------- */
+
+    // Detect if prices exist (either from updateFields OR original body)
+    const oldP =
+      updateFields.old_price !== undefined
+        ? Number(updateFields.old_price)
+        : Number(body.old_price ?? 0);
+
+    const currP =
+      updateFields.current_price !== undefined
+        ? Number(updateFields.current_price)
+        : Number(body.current_price ?? 0);
 
     if (!isNaN(oldP) && !isNaN(currP) && oldP > 0 && currP > 0) {
-      const metrics = computeDealMetrics(oldP, currP);
-      (updateFields as any).price_diff = metrics.price_diff;
-      (updateFields as any).percent_diff = metrics.percent_diff;
-      (updateFields as any).deal_level = metrics.deal_level;
+      const diff = oldP - currP;
+      const percent = Number(((diff / oldP) * 100).toFixed(2));
+
+      let level = null;
+      if (percent >= 40 && percent < 51) level = "Blistering deal";
+      else if (percent >= 51 && percent < 61) level = "Scorching deal";
+      else if (percent >= 61 && percent < 71) level = "Searing deal";
+      else if (percent >= 71) level = "Flaming deal";
+
+      updateFields.price_diff = diff;
+      updateFields.percent_diff = percent;
+      updateFields.deal_level = level;
     }
 
+    /* ---------------------------------------------------------
+       UPDATE in Supabase
+    --------------------------------------------------------- */
     const { data, error } = await supabaseAdmin
       .from("deals")
       .update(updateFields)
@@ -355,12 +377,14 @@ export async function PUT(req: Request) {
       .single();
 
     if (error) throw error;
+
     return NextResponse.json({ ok: true, updated: data });
   } catch (err: any) {
     console.error("PUT /deals error:", err);
     return NextResponse.json({ error: err.message }, { status: 500 });
   }
 }
+
 
 /* -------------------------------------------------------------
    DELETE → Delete existing deal

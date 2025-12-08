@@ -1,53 +1,33 @@
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import type { SelectedDeal } from "./types";
 
-/**
- * Picks a deal published within the last X minutes,
- * where X = social_interval_minutes from settings.
- * Also filters by allowed stores.
- */
 export async function pickDealForSocial(): Promise<SelectedDeal | null> {
-  // Load settings
-  const { data: settings, error: settingsErr } = await supabaseAdmin
+  const { data: settings } = await supabaseAdmin
     .from("auto_publish_settings")
     .select("*")
     .eq("id", 1)
     .single();
 
-  if (settingsErr || !settings) {
-    console.error("❌ Failed to load autopublish settings:", settingsErr);
-    return null;
-  }
+  if (!settings) return null;
 
   const intervalMinutes = settings.social_interval_minutes || 60;
-  const allowedStores: string[] = settings.allowed_stores || ["Amazon", "Walmart"];
+  const allowedStores = settings.allowed_stores || ["Amazon", "Walmart"];
 
-  // Time window
-  const intervalAgo = new Date(Date.now() - intervalMinutes * 60 * 1000).toISOString();
+  const intervalAgo = new Date(Date.now() - intervalMinutes * 60000).toISOString();
 
-  // Try primary time window first
   const deal = await tryFetchDeal(intervalAgo, allowedStores);
   if (deal) return deal;
 
-  // If nothing found, fallback #1 → past 6 hours
-  const fallback6h = new Date(Date.now() - 6 * 60 * 60 * 1000).toISOString();
-  const deal6h = await tryFetchDeal(fallback6h, allowedStores);
-  if (deal6h) return deal6h;
+  const sixHours = new Date(Date.now() - 6 * 3600000).toISOString();
+  const deal6 = await tryFetchDeal(sixHours, allowedStores);
+  if (deal6) return deal6;
 
-  // Fallback #2 → past 24 hours
-  const fallback24h = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
-  const deal24h = await tryFetchDeal(fallback24h, allowedStores);
-  if (deal24h) return deal24h;
-
-  console.warn("⚠ No deals found within 24 hours for allowed stores:", allowedStores);
-  return null;
+  const day = new Date(Date.now() - 24 * 3600000).toISOString();
+  return await tryFetchDeal(day, allowedStores);
 }
 
-/**
- * Helper function to fetch deals after a given timestamp.
- */
-async function tryFetchDeal(sinceTime: string, allowedStores: string[]) {
-  const { data, error } = await supabaseAdmin
+async function tryFetchDeal(since: string, allowedStores: string[]) {
+  const { data } = await supabaseAdmin
     .from("deals")
     .select(`
       id,
@@ -56,35 +36,41 @@ async function tryFetchDeal(sinceTime: string, allowedStores: string[]) {
       current_price,
       old_price,
       percent_diff,
-      store_name,
+      price_diff,
       image_link,
+      product_link,
+      review_link,
+      store_name,
       slug
     `)
-    .gte("published_at", sinceTime)
-    .neq("exclude_from_auto", true)
+    .gte("published_at", since)
+    .eq("exclude_from_auto", false)
     .in("store_name", allowedStores)
     .order("published_at", { ascending: false })
     .limit(30);
 
-  if (error) {
-    console.error("❌ dealSelector query failed:", error);
-    return null;
-  }
-
   if (!data || data.length === 0) return null;
 
-  // Random pick
-  const random = data[Math.floor(Math.random() * data.length)];
+  const r = data[Math.floor(Math.random() * data.length)];
 
-  return {
-    id: random.id,
-    title: random.description,
-    description: random.notes,
-    price: random.current_price,
-    old_price: random.old_price,
-    percent_diff: random.percent_diff,
-    store_name: random.store_name,
-    image_link: random.image_link,
-    slug: random.slug,
+  const mapped: SelectedDeal = {
+    id: r.id,
+    title: r.description,
+    description: r.notes,
+
+    price: r.current_price ?? null,
+    old_price: r.old_price ?? null,
+    percent_diff: r.percent_diff ?? null,
+
+    current_price: r.current_price ?? null,
+    price_diff: r.price_diff ?? null,
+
+    image_link: r.image_link,
+    product_link: r.product_link,
+    review_link: r.review_link,
+    store_name: r.store_name,
+    slug: r.slug,
   };
+
+  return mapped;
 }

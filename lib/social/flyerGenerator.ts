@@ -2,11 +2,9 @@ import { createCanvas, loadImage, registerFont } from "canvas";
 import type { SelectedDeal } from "./types";
 import path from "path";
 
-// Canvas size
 const WIDTH = 1080;
 const HEIGHT = 1350;
 
-// Fonts
 registerFont(path.join(process.cwd(), "public/fonts/Inter-Regular.ttf"), {
   family: "Inter",
 });
@@ -15,7 +13,6 @@ registerFont(path.join(process.cwd(), "public/fonts/Inter-Bold.ttf"), {
   weight: "700",
 });
 
-// Helpers
 function formatPrice(val: number | null) {
   if (val == null) return "$0.00";
   return `$${val.toFixed(2)}`;
@@ -28,7 +25,7 @@ function wrapLines(ctx: any, text: string, maxWidth: number, maxLines: number) {
 
   for (const w of words) {
     const test = line + w + " ";
-    if (ctx.measureText(test).width > maxWidth && line.length > 0) {
+    if (ctx.measureText(test).width > maxWidth && line !== "") {
       lines.push(line.trim());
       line = w + " ";
       if (lines.length === maxLines) break;
@@ -36,12 +33,10 @@ function wrapLines(ctx: any, text: string, maxWidth: number, maxLines: number) {
       line = test;
     }
   }
-  if (lines.length < maxLines && line.trim()) {
-    lines.push(line.trim());
-  }
-  if (lines.length === maxLines) {
-    lines[maxLines - 1] = lines[maxLines - 1] + "...";
-  }
+
+  if (line.trim()) lines.push(line.trim());
+  if (lines.length > maxLines) lines.length = maxLines;
+
   return lines;
 }
 
@@ -49,106 +44,82 @@ export async function generateFlyer(deal: SelectedDeal): Promise<Buffer> {
   const canvas = createCanvas(WIDTH, HEIGHT);
   const ctx = canvas.getContext("2d");
 
-  // Background
   ctx.fillStyle = "#ffffff";
   ctx.fillRect(0, 0, WIDTH, HEIGHT);
 
-  // TITLE (SAFE VERSION)
-ctx.fillStyle = "#111827";
+  // TITLE
+  const safeTitle =
+    deal.title ||
+    deal.description ||
+    deal.slug ||
+    "Hot Deal!";
 
-const safeTitle =
-  deal.title ||
-  deal.description ||
-  deal.notes ||
-  deal.slug ||
-  "Hot Deal!";
+  ctx.fillStyle = "#111827";
 
-let fontSize = 56;
-let lines: string[] = [];
+  let fontSize = 56;
+  let lines: string[] = [];
 
-while (fontSize >= 34) {
-  ctx.font = `700 ${fontSize}px Inter`;
+  while (fontSize >= 34) {
+    ctx.font = `700 ${fontSize}px Inter`;
+    lines = wrapLines(ctx, safeTitle, 900, 2);
+    if (lines.length <= 2) break;
+    fontSize -= 2;
+  }
 
-  // wrapLines always receives a string now
-  lines = wrapLines(ctx, safeTitle, 900, 2);
+  ctx.textAlign = "center";
+  let y = 130;
 
-  if (lines.length <= 2) break;
-  fontSize -= 2;
-}
+  for (const line of lines) {
+    ctx.fillText(line, WIDTH / 2, y);
+    y += fontSize + 10;
+  }
 
-ctx.textAlign = "center";
-let y = 130;
-const lineHeight = fontSize + 10;
-
-for (const line of lines) {
-  ctx.fillText(line, WIDTH / 2, y);
-  y += lineHeight;
-}
-
-  // PRODUCT IMAGE
-  const safeImageUrl =
-    deal.image_link ||
-    "https://www.dealswindfall.com/dealswindfall-logoA.png";
+  // IMAGE
+  const safeUrl =
+    deal.image_link || "https://www.dealswindfall.com/dealswindfall-logoA.png";
 
   let imageBottom = y + 40;
 
   try {
-    const image = await loadImage(safeImageUrl);
+    const img = await loadImage(safeUrl);
 
     const maxW = 900;
     const maxH = 550;
-    const ratio = Math.min(maxW / image.width, maxH / image.height);
+    const ratio = Math.min(maxW / img.width, maxH / img.height);
 
-    const w = image.width * ratio;
-    const h = image.height * ratio;
+    const w = img.width * ratio;
+    const h = img.height * ratio;
 
-    const imgX = (WIDTH - w) / 2;
+    const x = (WIDTH - w) / 2;
     const imgY = y + 40;
 
-    ctx.drawImage(image, imgX, imgY, w, h);
+    ctx.drawImage(img, x, imgY, w, h);
     imageBottom = imgY + h;
-  } catch (err) {
-    console.error("❌ Flyer image load FAILED:", err);
+  } catch {
     imageBottom = y + 300;
   }
 
-  // PRICE BADGE — ensure safe spacing
+  // PRICE BADGE
   const badgeH = 190;
-  const footerReservedTop = HEIGHT - 260; // moved down
-  let badgeY = imageBottom + 80;
-  const maxBadgeY = footerReservedTop - badgeH;
-
-  if (badgeY > maxBadgeY) badgeY = maxBadgeY;
-
+  const footerTop = HEIGHT - 260;
   const badgeW = 650;
   const badgeX = (WIDTH - badgeW) / 2;
-  const radius = 60;
+  let badgeY = imageBottom + 80;
 
-  ctx.fillStyle = "#facc15"; // yellow
+  if (badgeY > footerTop - badgeH) badgeY = footerTop - badgeH;
+
+  ctx.fillStyle = "#facc15";
   ctx.beginPath();
-  ctx.moveTo(badgeX + radius, badgeY);
-  ctx.lineTo(badgeX + badgeW - radius, badgeY);
-  ctx.quadraticCurveTo(badgeX + badgeW, badgeY, badgeX + badgeW, badgeY + radius);
-  ctx.lineTo(badgeX + badgeW, badgeY + badgeH - radius);
-  ctx.quadraticCurveTo(
-    badgeX + badgeW,
-    badgeY + badgeH,
-    badgeX + badgeW - radius,
-    badgeY + badgeH
-  );
-  ctx.lineTo(badgeX + radius, badgeY + badgeH);
-  ctx.quadraticCurveTo(badgeX, badgeY + badgeH, badgeX, badgeY + badgeH - radius);
-  ctx.lineTo(badgeX, badgeY + radius);
-  ctx.quadraticCurveTo(badgeX, badgeY, badgeX + radius, badgeY);
-  ctx.closePath();
+  ctx.roundRect(badgeX, badgeY, badgeW, badgeH, 60);
   ctx.fill();
 
   const price = formatPrice(deal.price);
   const percent =
-    deal.percent_diff ??
-    (deal.old_price && deal.price
+    deal.percent_diff != null
+      ? deal.percent_diff
+      : deal.old_price && deal.price
       ? Math.round(((deal.old_price - deal.price) / deal.old_price) * 100)
-      : 0);
+      : 0;
 
   ctx.textAlign = "center";
   ctx.fillStyle = "#ffffff";
@@ -159,26 +130,19 @@ for (const line of lines) {
   ctx.font = "700 42px Inter";
   ctx.fillText(`${percent}% OFF`, WIDTH / 2, badgeY + 160);
 
-  // FOOTER — moved lower so it NEVER overlaps
+  // FOOTER
   const footerY = HEIGHT - 150;
 
-  // Logo left
   try {
-    const logo = await loadImage(
-      "https://www.dealswindfall.com/dealswindfall-logoA.png"
-    );
+    const logo = await loadImage("https://www.dealswindfall.com/dealswindfall-logoA.png");
     const logoH = 90;
     const logoW = (logo.width / logo.height) * logoH;
-
     ctx.drawImage(logo, 80, footerY, logoW, logoH);
-  } catch (err) {
-    console.error("Footer logo failed:", err);
-  }
+  } catch {}
 
-  // Website right
   ctx.textAlign = "right";
-  ctx.font = "400 40px Inter";
   ctx.fillStyle = "#b91c1c";
+  ctx.font = "400 40px Inter";
   ctx.fillText("www.dealswindfall.com", WIDTH - 80, footerY + 65);
 
   return canvas.toBuffer("image/png");

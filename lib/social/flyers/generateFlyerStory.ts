@@ -25,7 +25,7 @@ function wrapLines(ctx: any, text: string, maxWidth: number, maxLines: number) {
 
   for (const w of words) {
     const test = line + w + " ";
-    if (ctx.measureText(test).width > maxWidth && line.length > 0) {
+    if (ctx.measureText(test).width > maxWidth && line !== "") {
       lines.push(line.trim());
       line = w + " ";
       if (lines.length === maxLines) break;
@@ -33,15 +33,10 @@ function wrapLines(ctx: any, text: string, maxWidth: number, maxLines: number) {
       line = test;
     }
   }
-  if (lines.length < maxLines && line.trim()) {
-    lines.push(line.trim());
-  }
-  if (lines.length > maxLines) {
-    lines.length = maxLines;
-  }
-  if (lines.length === maxLines) {
-    lines[lines.length - 1] = lines[lines.length - 1] + "...";
-  }
+
+  if (line.trim() && lines.length < maxLines) lines.push(line.trim());
+  if (lines.length > maxLines) lines.length = maxLines;
+
   return lines;
 }
 
@@ -54,39 +49,36 @@ export async function generateFlyerStory(
   ctx.fillStyle = "#ffffff";
   ctx.fillRect(0, 0, WIDTH, HEIGHT);
 
-  // TITLE
+  // SAFE TITLE
+  const safeTitle =
+    deal.title ||
+    deal.description ||
+    deal.slug ||
+    "Hot Deal!";
+
   ctx.fillStyle = "#111827";
+
   let fontSize = 60;
-  let lines: string[] = [];
+  let titleLines: string[] = [];
 
   while (fontSize >= 34) {
     ctx.font = `700 ${fontSize}px Inter`;
-   const safeTitle =
-  deal.title ||
-  deal.description ||
-  deal.notes ||
-  deal.slug ||
-  "Hot Deal!";
-
-lines = wrapLines(ctx, safeTitle, 900, 2);
-
-    if (lines.length <= 2) break;
+    titleLines = wrapLines(ctx, safeTitle, 900, 2);
+    if (titleLines.length <= 2) break;
     fontSize -= 2;
   }
 
   ctx.textAlign = "center";
   let y = 150;
-  const lineHeight = fontSize + 10;
 
-  for (const line of lines) {
+  for (const line of titleLines) {
     ctx.fillText(line, WIDTH / 2, y);
-    y += lineHeight;
+    y += fontSize + 10;
   }
 
   // IMAGE
   const safeUrl =
-    deal.image_link ||
-    "https://www.dealswindfall.com/dealswindfall-logoA.png";
+    deal.image_link || "https://www.dealswindfall.com/dealswindfall-logoA.png";
 
   let imgBottom = y + 40;
 
@@ -105,70 +97,51 @@ lines = wrapLines(ctx, safeTitle, 900, 2);
 
     ctx.drawImage(img, x, imgY, w, h);
     imgBottom = imgY + h;
-  } catch (e) {
-    console.error("Story image load fail:", e);
+  } catch {
     imgBottom = y + 300;
   }
 
-  // PRICE BADGE (above footer)
+  // PRICE BADGE
   const badgeH = 220;
-  const footerTop = HEIGHT - 220;
-  let badgeY = imgBottom + 90;
-  const maxBadgeY = footerTop - badgeH - 40;
-  if (badgeY > maxBadgeY) badgeY = maxBadgeY;
-
   const badgeW = 820;
   const badgeX = (WIDTH - badgeW) / 2;
-  const r = 60;
+
+  const footerTop = HEIGHT - 220;
+
+  let badgeY = imgBottom + 90;
+  if (badgeY > footerTop - badgeH - 40) badgeY = footerTop - badgeH - 40;
 
   ctx.fillStyle = "#facc15";
   ctx.beginPath();
-  ctx.moveTo(badgeX + r, badgeY);
-  ctx.lineTo(badgeX + badgeW - r, badgeY);
-  ctx.quadraticCurveTo(badgeX + badgeW, badgeY, badgeX + badgeW, badgeY + r);
-  ctx.lineTo(badgeX + badgeW, badgeY + badgeH - r);
-  ctx.quadraticCurveTo(
-    badgeX + badgeW,
-    badgeY + badgeH,
-    badgeX + badgeW - r,
-    badgeY + badgeH
-  );
-  ctx.lineTo(badgeX + r, badgeY + badgeH);
-  ctx.quadraticCurveTo(badgeX, badgeY + badgeH, badgeX, badgeY + badgeH - r);
-  ctx.lineTo(badgeX, badgeY + r);
-  ctx.quadraticCurveTo(badgeX, badgeY, badgeX + r, badgeY);
-  ctx.closePath();
+  ctx.roundRect(badgeX, badgeY, badgeW, badgeH, 60);
   ctx.fill();
 
   const price = formatPrice(deal.price);
   const percent =
-    deal.percent_diff ??
-    (deal.old_price && deal.price
+    deal.percent_diff != null
+      ? deal.percent_diff
+      : deal.old_price && deal.price
       ? Math.round(((deal.old_price - deal.price) / deal.old_price) * 100)
-      : 0);
+      : 0;
 
-  ctx.fillStyle = "#ffffff";
   ctx.textAlign = "center";
+  ctx.fillStyle = "#ffffff";
+
   ctx.font = "700 90px Inter";
   ctx.fillText(price, WIDTH / 2, badgeY + 125);
 
   ctx.font = "700 50px Inter";
   ctx.fillText(`${percent}% OFF`, WIDTH / 2, badgeY + 195);
 
-  // FOOTER (logo left, URL right)
+  // FOOTER LOGO
   const logoY = HEIGHT - 170;
 
   try {
-    const logo = await loadImage(
-      "https://www.dealswindfall.com/dealswindfall-logoA.png"
-    );
+    const logo = await loadImage("https://www.dealswindfall.com/dealswindfall-logoA.png");
     const logoH = 80;
     const logoW = (logo.width / logo.height) * logoH;
-
     ctx.drawImage(logo, 80, logoY, logoW, logoH);
-  } catch (e) {
-    console.error("Story footer logo error:", e);
-  }
+  } catch {}
 
   ctx.textAlign = "right";
   ctx.font = "400 38px Inter";

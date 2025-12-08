@@ -8,27 +8,57 @@ export default function SchedulerStatusWidget() {
   const [platforms, setPlatforms] = useState<any>(null);
   const [message, setMessage] = useState("");
 
+  /* ---------------------------
+     LOAD STATUS DATA
+  ----------------------------*/
   async function load() {
     setLoading(true);
 
-    const res1 = await fetch("/api/auto-publish-status");
-    const res2 = await fetch("/api/auto-publish-platforms");
+    try {
+      const [res1, res2] = await Promise.all([
+        fetch("/api/auto-publish-status"),
+        fetch("/api/auto-publish-platforms"),
+      ]);
 
-    const s1 = await res1.json();
-    const s2 = await res2.json();
+      const s1 = await res1.json();
+const s2 = await res2.json();
 
-    setStatus(s1);
-    setPlatforms(s2);
+console.log("STATUS API RESPONSE:", s1);
+console.log("PLATFORMS API RESPONSE:", s2);
+
+if (!res1.ok) {
+  setStatus({
+    deals_enabled: false,
+    deals_last_run: null,
+    deals_next_run: null,
+    deals_last_count: 0
+  });
+  return;
+}
+
+if (!res2.ok) {
+  console.error("auto-publish-platforms ERROR:", s2);
+}
+
+setStatus(s1);
+setPlatforms(s2);
+
+    } catch (e) {
+      console.error("Scheduler load error:", e);
+    }
 
     setLoading(false);
   }
 
   useEffect(() => {
     load();
-    const timer = setInterval(load, 10_000); // auto-refresh every 10s
+    const timer = setInterval(load, 10_000);
     return () => clearInterval(timer);
   }, []);
 
+  /* ---------------------------
+      ACTION HANDLERS
+  ----------------------------*/
   async function action(type: string) {
     setMessage("");
 
@@ -64,35 +94,59 @@ export default function SchedulerStatusWidget() {
     load();
   }
 
-  if (loading) {
-    return <div className="p-4 bg-white rounded shadow">Loading scheduler...</div>;
+  if (loading || !status) {
+    return (
+      <div className="p-4 bg-white rounded shadow">
+        Loading scheduler...
+      </div>
+    );
   }
 
+  /* ---------------------------
+     UTIL: SAFE DATE FORMATTER
+  ----------------------------*/
+  const fmt = (d: string | null) =>
+    d ? new Date(d).toLocaleString() : "Not Scheduled";
+
+  /* ---------------------------
+        UI STARTS HERE
+  ----------------------------*/
   return (
     <div className="p-6 bg-white border rounded shadow mt-6 space-y-4">
       <h2 className="text-2xl font-semibold text-blue-600">
         Scheduler Status
       </h2>
 
-      {message && <div className="p-2 bg-green-100 text-green-700 rounded">{message}</div>}
+      {message && (
+        <div className="p-2 bg-green-100 text-green-700 rounded">
+          {message}
+        </div>
+      )}
 
-      {/* DEAL PUBLISH STATUS */}
+      {/* ---------------------------------------
+              DEALS AUTO-PUBLISH STATUS
+      ---------------------------------------- */}
       <div className="border p-4 rounded-md">
         <h3 className="text-lg font-semibold mb-2">🔥 Deals Auto-Publish</h3>
 
         <p className="text-sm text-gray-700">
-          <strong>Enabled:</strong> {status.enabled ? "Yes" : "No"}
+          <strong>Enabled:</strong>{" "}
+          {status.deals_enabled ? "Yes" : "No"}
         </p>
+
         <p className="text-sm text-gray-700">
           <strong>Last Run:</strong>{" "}
-          {status.last_run ? new Date(status.last_run).toLocaleString() : "Never"}
+          {fmt(status.deals_last_run)}
         </p>
+
         <p className="text-sm text-gray-700">
           <strong>Next Run:</strong>{" "}
-          {status.next_run ? new Date(status.next_run).toLocaleString() : "Not Scheduled"}
+          {fmt(status.deals_next_run)}
         </p>
+
         <p className="text-sm text-gray-700">
-          <strong>Deals Last Published:</strong> {status.last_count ?? 0}
+          <strong>Deals Last Published:</strong>{" "}
+          {status.deals_last_count ?? 0}
         </p>
 
         <button
@@ -103,24 +157,25 @@ export default function SchedulerStatusWidget() {
         </button>
       </div>
 
-      {/* SOCIAL POST STATUS */}
+      {/* ---------------------------------------
+              SOCIAL AUTO-POSTING STATUS
+      ---------------------------------------- */}
       <div className="border p-4 rounded-md">
         <h3 className="text-lg font-semibold mb-2">📣 Social Auto-Posting</h3>
 
         <p className="text-sm text-gray-700">
-          <strong>Enabled:</strong> {status.social_enabled ? "Yes" : "No"}
+          <strong>Enabled:</strong>{" "}
+          {status.social_enabled ? "Yes" : "No"}
         </p>
+
         <p className="text-sm text-gray-700">
           <strong>Last Social Run:</strong>{" "}
-          {status.social_last_run
-            ? new Date(status.social_last_run).toLocaleString()
-            : "Never"}
+          {fmt(status.social_last_run)}
         </p>
+
         <p className="text-sm text-gray-700">
           <strong>Next Social Run:</strong>{" "}
-          {status.social_next_run
-            ? new Date(status.social_next_run).toLocaleString()
-            : "Not Scheduled"}
+          {fmt(status.social_next_run)}
         </p>
 
         <p className="text-sm text-gray-700">
@@ -132,9 +187,11 @@ export default function SchedulerStatusWidget() {
           <strong>Platforms:</strong>{" "}
           {platforms
             ? Object.entries(platforms)
-                .filter(([k, v]) => ["x", "telegram", "facebook", "instagram"].includes(k))
-                .map(([k, v]) => (v ? k : null))
-                .filter(Boolean)
+                .filter(([k, v]) =>
+                  ["x", "telegram", "facebook", "instagram"].includes(k)
+                )
+                .filter(([k, v]) => v)
+                .map(([k]) => k)
                 .join(", ") || "None enabled"
             : "Loading..."}
         </p>
@@ -147,7 +204,9 @@ export default function SchedulerStatusWidget() {
         </button>
       </div>
 
-      {/* ADVANCED ACTIONS */}
+      {/* ---------------------------------------
+              ADVANCED CONTROLS
+      ---------------------------------------- */}
       <div className="border p-4 rounded-md bg-gray-50">
         <h3 className="text-lg font-semibold mb-2">⚙️ Advanced</h3>
 

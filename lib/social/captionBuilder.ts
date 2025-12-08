@@ -1,12 +1,11 @@
 import type { SelectedDeal } from "./types";
 
 export type SocialContent = {
-  text: string;        // Long caption (Telegram / Facebook / Instagram)
-  short: string;       // Short caption (X)
+  text: string;
+  short: string;
   url: string;
 };
 
-/** Escape HTML for Telegram */
 function escapeHtml(str: string) {
   return str
     .replace(/&/g, "&amp;")
@@ -14,32 +13,24 @@ function escapeHtml(str: string) {
     .replace(/>/g, "&gt;");
 }
 
-/** Trim caption safely */
 function trimTo(str: string, max: number) {
   return str.length > max ? str.slice(0, max - 3) + "..." : str;
 }
 
 export function buildCaption(deal: SelectedDeal): SocialContent {
-  // Discount calculation
+  const price = deal.price != null ? `$${Number(deal.price).toFixed(2)}` : "Great price";
+
   const discount =
-    deal.old_price && deal.price
-      ? Math.round(((deal.old_price - deal.price) / deal.old_price) * 100)
-      : null;
+    deal.percent_diff != null ? ` (${deal.percent_diff}% OFF)` : "";
 
-  const pricePart = deal.price ? `$${deal.price}` : "Great price";
-  const discountPart = discount ? ` (${discount}% OFF)` : "";
-  const storePart = deal.store_name ? ` at ${deal.store_name}` : "";
+  const store = deal.store_name ? ` at ${deal.store_name}` : "";
 
-  // Correct Deal URL
   const url = `https://www.dealswindfall.com/deals/${deal.id}-${deal.slug}`;
 
-  // ---------------------------
-  // LONG CAPTION (FB/IG/Telegram)
-  // ---------------------------
   const longCaptionRaw = `
 🔥 Deal Alert: ${deal.title}
 
-${pricePart}${discountPart}${storePart}
+${price}${discount}${store}
 
 👇 Grab it now:
 ${url}
@@ -47,21 +38,11 @@ ${url}
 #DealsWindfall #Deals #SaveMoney #Offers #Coupons
 `.trim();
 
-  // Telegram-safe
-  const longCaptionSafe = escapeHtml(longCaptionRaw);
-
-  // ---------------------------
-  // SHORT CAPTION (X / Twitter)
-  // ---------------------------
-  const shortCaptionRaw = `${deal.title} — ${pricePart}${discountPart}${storePart}.  
-Grab it now: ${url}`;
-
-  // X max: 280 chars (safe threshold 250)
-  const shortCaptionSafe = trimTo(shortCaptionRaw.replace(/\n/g, " "), 250);
+  const shortRaw = `${deal.title} — ${price}${discount}${store}. Grab it now: ${url}`;
 
   return {
-    text: longCaptionSafe,
-    short: shortCaptionSafe,
+    text: escapeHtml(longCaptionRaw),
+    short: trimTo(shortRaw, 250),
     url,
   };
 }

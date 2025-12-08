@@ -55,27 +55,26 @@ export default function DealsList() {
      STATUS TOGGLE
   --------------------------------------------------------- */
   const toggleStatus = async (deal: any) => {
-    const newStatus = deal.status === "Published" ? "Draft" : "Published";
+  const newStatus = deal.status === "Published" ? "Draft" : "Published";
 
-    try {
-      const res = await fetch("/api/deals", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id: deal.id, status: newStatus }),
-      });
+  try {
+    const res = await fetch("/api/deals", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id: deal.id, status: newStatus }),
+    });
 
+    if (res.ok) {
+      await fetchDeals(); // reload fresh data
+    } else {
       const data = await res.json();
-      if (res.ok) {
-        setDeals((prev) =>
-          prev.map((d) => (d.id === deal.id ? { ...d, status: newStatus } : d))
-        );
-      } else {
-        alert(`❌ ${data.error || "Failed to update status"}`);
-      }
-    } catch (e: any) {
-      alert(`❌ ${e.message}`);
+      alert("❌ Failed: " + (data.error || "Update error"));
     }
-  };
+  } catch (e: any) {
+    alert("❌ " + e.message);
+  }
+};
+
 
   /* ---------------------------------------------------------
      AUTO-PUBLISH EXCLUDE CHECKBOX
