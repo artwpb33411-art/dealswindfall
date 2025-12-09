@@ -12,12 +12,10 @@ export async function GET() {
   /* -------------------------------------------------------------
       1. Fetch Deals
   ------------------------------------------------------------- */
-  const { data: deals, error: dealsError } = await supabaseAdmin
-    .from("deals")
-    .select("id, slug, slug_es, published_at, created_at, status")
-    .eq("status", "Published")
-    .order("id", { ascending: true })
-   .range(0, 99999);
+ const { data: deals, error: dealsError } = await supabaseAdmin.rpc(
+  "get_all_published_deals"
+);
+
 
   console.log("DEALS LENGTH:", deals?.length);
 console.log("DEALS ERROR:", dealsError);
