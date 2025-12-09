@@ -20,6 +20,7 @@ export async function GET() {
 
   console.log("DEALS LENGTH:", deals?.length);
 console.log("DEALS ERROR:", dealsError);
+console.log("SERVICE KEY:", process.env.SUPABASE_SERVICE_ROLE_KEY);
 
 
   if (dealsError) {
