@@ -1,4 +1,5 @@
 export const dynamic = "force-dynamic";
+export const runtime = "nodejs";
 
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { NextResponse } from "next/server";
@@ -19,6 +20,12 @@ console.log("DEALS LENGTH:", deals?.length);
 
 console.log("DEALS ERROR:", dealsError);
 
+const { data: test, error: testError } = await supabaseAdmin
+  .from("deals")
+  .select("*")
+  .limit(1);
+
+console.log("TEST ERROR:", testError);
 
 
 
