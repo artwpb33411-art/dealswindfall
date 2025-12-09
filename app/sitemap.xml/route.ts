@@ -18,6 +18,10 @@ export async function GET() {
     .eq("status", "Published")
    .range(0, 99999);
 
+  console.log("DEALS LENGTH:", deals?.length);
+console.log("DEALS ERROR:", dealsError);
+
+
   if (dealsError) {
     console.error("Deals sitemap fetch error:", dealsError);
   }
