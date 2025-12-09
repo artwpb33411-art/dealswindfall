@@ -16,6 +16,7 @@ export async function GET() {
     .from("deals")
     .select("id, slug, slug_es, published_at, created_at, status")
     .eq("status", "Published")
+    .order("id", { ascending: true })
    .range(0, 99999);
 
   console.log("DEALS LENGTH:", deals?.length);
