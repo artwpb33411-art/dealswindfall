@@ -15,7 +15,8 @@ export async function GET() {
   const { data: deals, error: dealsError } = await supabaseAdmin
     .from("deals")
     .select("id, slug, slug_es, published_at, created_at, status")
-    .eq("status", "Published");
+    .eq("status", "Published")
+   .range(0, 99999);
 
   if (dealsError) {
     console.error("Deals sitemap fetch error:", dealsError);
@@ -26,7 +27,8 @@ export async function GET() {
   ------------------------------------------------------------- */
   const { data: blogs, error: blogsError } = await supabaseAdmin
     .from("blog_posts")
-    .select("id, slug, published, published_at, updated_at");
+    .select("id, slug, published, published_at, updated_at")
+   .range(0, 99999);
 
   if (blogsError) {
     console.error("Blog sitemap fetch error:", blogsError);
