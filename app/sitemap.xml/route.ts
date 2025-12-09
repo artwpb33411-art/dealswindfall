@@ -21,6 +21,8 @@ export async function GET() {
 
   console.log("DEALS LENGTH:", deals?.length);
 console.log("DEALS ERROR:", dealsError);
+console.log("SUPABASE URL:", process.env.NEXT_PUBLIC_SUPABASE_URL);
+console.log("SERVICE KEY START:", process.env.SUPABASE_SERVICE_ROLE_KEY?.substring(0, 20));
 
 
 
