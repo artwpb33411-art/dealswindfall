@@ -4,6 +4,32 @@ export const runtime = "nodejs";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { NextResponse } from "next/server";
 
+async function fetchAllDeals() {
+  const pageSize = 1000;
+  let from = 0;
+  let allDeals: any[] = [];
+
+  while (true) {
+    const { data, error } = await supabaseAdmin
+      .from("deals")
+      .select("id, slug, slug_es, published_at, created_at, status")
+      .eq("status", "Published")
+      .order("id")
+      .range(from, from + pageSize - 1);
+
+    if (error) throw error;
+
+    allDeals = allDeals.concat(data);
+
+    if (data.length < pageSize) break; // Done when last page returns <1000
+
+    from += pageSize;
+  }
+
+  return allDeals;
+}
+
+
 export async function GET() {
   const baseUrl =
     process.env.NEXT_PUBLIC_SITE_URL?.trim().replace(/\/$/, "") ||
@@ -26,6 +52,8 @@ const { data: test, error: testError } = await supabaseAdmin
   .limit(1);
 
 console.log("TEST ERROR:", testError);
+const deals = await fetchAllDeals();
+console.log("DEALS LENGTH:", deals.length);
 
 
 
