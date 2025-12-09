@@ -39,12 +39,8 @@ export async function GET() {
   /* -------------------------------------------------------------
       1. Fetch Deals
   ------------------------------------------------------------- */
-const { data: deals, error: dealsError } =
-  await supabaseAdmin.rpc("get_all_deals");
 
-console.log("DEALS LENGTH:", deals?.length);
 
-console.log("DEALS ERROR:", dealsError);
 
 const { data: test, error: testError } = await supabaseAdmin
   .from("deals")
