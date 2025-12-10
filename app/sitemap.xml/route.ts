@@ -3,7 +3,13 @@ export const dynamic = "force-dynamic";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { NextResponse } from "next/server";
 
-/* -------------------------------------------------------------
+export async function GET() {
+  const baseUrl =
+    process.env.NEXT_PUBLIC_SITE_URL?.trim().replace(/\/$/, "") ||
+    https://${process.env.NEXT_PUBLIC_VERCEL_URL} ||
+    "http://localhost:3000";
+
+  /* -------------------------------------------------------------
       1. Fetch Deals
   ------------------------------------------------------------- */
   const { data: deals, error: dealsError } = await supabaseAdmin
@@ -15,14 +21,12 @@ import { NextResponse } from "next/server";
     console.error("Deals sitemap fetch error:", dealsError);
   }
 
-
   /* -------------------------------------------------------------
       2. Fetch Blog Posts
   ------------------------------------------------------------- */
   const { data: blogs, error: blogsError } = await supabaseAdmin
     .from("blog_posts")
     .select("id, slug, published, published_at, updated_at");
-
 
   if (blogsError) {
     console.error("Blog sitemap fetch error:", blogsError);
@@ -33,8 +37,8 @@ import { NextResponse } from "next/server";
   ------------------------------------------------------------- */
   const staticPages = ["", "/about", "/contact", "/categories", "/blog"];
 
-  let xml = `<?xml version="1.0" encoding="UTF-8"?>\n`;
-  xml += `<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n`;
+  let xml = <?xml version="1.0" encoding="UTF-8"?>\n;
+  xml += <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n;
 
   /* -------------------------------------------------------------
       Static Pages
@@ -96,7 +100,7 @@ import { NextResponse } from "next/server";
     }
   }
 
-  xml += `\n</urlset>`;
+  xml += \n</urlset>;
 
   return new NextResponse(xml, {
     headers: { "Content-Type": "application/xml" },
