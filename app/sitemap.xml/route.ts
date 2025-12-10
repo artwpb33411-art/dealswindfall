@@ -1,3 +1,5 @@
+
+
 export const dynamic = "force-dynamic";
 
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
@@ -6,7 +8,7 @@ import { NextResponse } from "next/server";
 export async function GET() {
   const baseUrl =
     process.env.NEXT_PUBLIC_SITE_URL?.trim().replace(/\/$/, "") ||
-    https://${process.env.NEXT_PUBLIC_VERCEL_URL} ||
+    `https://${process.env.NEXT_PUBLIC_VERCEL_URL}` ||
     "http://localhost:3000";
 
   /* -------------------------------------------------------------
@@ -37,8 +39,8 @@ export async function GET() {
   ------------------------------------------------------------- */
   const staticPages = ["", "/about", "/contact", "/categories", "/blog"];
 
-  let xml = <?xml version="1.0" encoding="UTF-8"?>\n;
-  xml += <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n;
+  let xml = `<?xml version="1.0" encoding="UTF-8"?>\n`;
+  xml += `<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n`;
 
   /* -------------------------------------------------------------
       Static Pages
@@ -100,7 +102,7 @@ export async function GET() {
     }
   }
 
-  xml += \n</urlset>;
+  xml += `\n</urlset>`;
 
   return new NextResponse(xml, {
     headers: { "Content-Type": "application/xml" },
