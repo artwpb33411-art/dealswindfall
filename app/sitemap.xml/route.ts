@@ -1,69 +1,28 @@
 export const dynamic = "force-dynamic";
-export const runtime = "nodejs";
 
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { NextResponse } from "next/server";
 
-async function fetchAllDeals() {
-  const pageSize = 1000;
-  let from = 0;
-  let allDeals: any[] = [];
-
-  while (true) {
-    const { data, error } = await supabaseAdmin
-      .from("deals")
-      .select("id, slug, slug_es, published_at, created_at, status")
-      .eq("status", "Published")
-      .order("id")
-      .range(from, from + pageSize - 1);
-
-    if (error) throw error;
-
-    allDeals = allDeals.concat(data);
-
-    if (data.length < pageSize) break; // Done when last page returns <1000
-
-    from += pageSize;
-  }
-
-  return allDeals;
-}
-
-
-export async function GET() {
-  const baseUrl =
-    process.env.NEXT_PUBLIC_SITE_URL?.trim().replace(/\/$/, "") ||
-    `https://${process.env.NEXT_PUBLIC_VERCEL_URL}` ||
-    "http://localhost:3000";
-
-  /* -------------------------------------------------------------
+/* -------------------------------------------------------------
       1. Fetch Deals
   ------------------------------------------------------------- */
-
-
-
-const { data: test, error: testError } = await supabaseAdmin
-  .from("deals")
-  .select("*")
-  .limit(1);
-
-console.log("TEST ERROR:", testError);
-const deals = await fetchAllDeals();
-console.log("DEALS LENGTH:", deals.length);
-
-
+  const { data: deals, error: dealsError } = await supabaseAdmin
+    .from("deals")
+    .select("id, slug, slug_es, published_at, created_at, status")
+    .eq("status", "Published");
 
   if (dealsError) {
     console.error("Deals sitemap fetch error:", dealsError);
   }
+
 
   /* -------------------------------------------------------------
       2. Fetch Blog Posts
   ------------------------------------------------------------- */
   const { data: blogs, error: blogsError } = await supabaseAdmin
     .from("blog_posts")
-    .select("id, slug, published, published_at, updated_at")
-   .range(0, 99999);
+    .select("id, slug, published, published_at, updated_at");
+
 
   if (blogsError) {
     console.error("Blog sitemap fetch error:", blogsError);
