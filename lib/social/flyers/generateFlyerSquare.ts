@@ -128,5 +128,6 @@ export async function generateFlyerSquare(deal: SelectedDeal): Promise<Buffer> {
   ctx.font = "700 40px Inter";
   ctx.fillText("www.dealswindfall.com", SIZE - 60, SIZE - 70);
 
-  return canvas.toBuffer("image/png");
+  return canvas.toBuffer("image/jpeg", { quality: 0.9 });
+
 }

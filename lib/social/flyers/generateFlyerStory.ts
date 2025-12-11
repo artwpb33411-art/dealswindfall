@@ -148,5 +148,6 @@ export async function generateFlyerStory(
   ctx.fillStyle = "#b91c1c";
   ctx.fillText("www.dealswindfall.com", WIDTH - 80, HEIGHT - 70);
 
-  return canvas.toBuffer("image/png");
+  return canvas.toBuffer("image/jpeg", { quality: 0.9 });
+
 }

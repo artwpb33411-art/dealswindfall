@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
+import { saveFlyerBufferToSupabase } from "@/lib/social/saveFlyerBuffer"; 
 
 import type { SelectedDeal } from "@/lib/social/types";
 import { buildCaption } from "@/lib/social/captionBuilder";
@@ -332,7 +333,7 @@ if (available.length === 0) {
 
     // 9️⃣ Generate flyers
     console.log("🖨 Generating flyers...");
-
+/*
     const flyerPortrait = await generateFlyer({
       ...deal,
       image_link: finalImage,
@@ -351,6 +352,38 @@ if (available.length === 0) {
     const portraitBase64 = flyerPortrait.toString("base64");
     const squareBase64 = flyerSquare.toString("base64");
     const storyBase64 = flyerStory.toString("base64"); // for future (stories)
+*/
+
+
+// 9️⃣ Generate flyers — ensure JPEG output
+console.log("🖨 Generating flyers...");
+
+const flyerPortrait = await generateFlyer({
+  ...deal,
+  image_link: finalImage,
+}); // should return a JPEG buffer
+
+const flyerSquare = await generateFlyerSquare({
+  ...deal,
+  image_link: finalImage,
+});
+
+const flyerStory = await generateFlyerStory({
+  ...deal,
+  image_link: finalImage,
+});
+
+// Buffers are ready for upload or base64 convert
+const portraitBuffer = flyerPortrait;
+const squareBuffer = flyerSquare;
+const storyBuffer = flyerStory;
+
+const portraitBase64 = portraitBuffer.toString("base64");
+const squareBase64 = squareBuffer.toString("base64");
+const storyBase64 = storyBuffer.toString("base64");
+
+
+
 
     // 🔟 Build captions (long + short + URL)
     const social = buildCaption(deal);

@@ -145,5 +145,6 @@ export async function generateFlyer(deal: SelectedDeal): Promise<Buffer> {
   ctx.font = "400 40px Inter";
   ctx.fillText("www.dealswindfall.com", WIDTH - 80, footerY + 65);
 
-  return canvas.toBuffer("image/png");
+ return canvas.toBuffer("image/jpeg", { quality: 0.9 });
+
 }
