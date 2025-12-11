@@ -2,7 +2,7 @@ import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { randomUUID } from "crypto";
 
 const FLYER_BUCKET =
-  process.env.SUPABASE_FLYER_BUCKET || "social-flyers"; // create this bucket in Supabase
+  process.env.SUPABASE_FLYER_BUCKET || "social-temp"; // create this bucket in Supabase
 
 /**
  * Save a flyer Buffer (JPEG) to Supabase Storage and return a public URL.
