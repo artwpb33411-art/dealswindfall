@@ -423,10 +423,15 @@ const storyBase64 = storyBuffer.toString("base64");
     }
 
     if (platforms.instagram) {
-      await tryPost("instagram", () =>
-        publishToInstagram(social.text, portraitBase64)
-      );
-    }
+  await tryPost("instagram", async () => {
+    // Upload JPEG flyer to Supabase → get public URL
+    const igImageUrl = await saveFlyerBufferToSupabase(portraitBuffer, "jpg");
+
+    // Publish using new Instagram API code
+    return publishToInstagram(social.text, igImageUrl);
+  });
+}
+
 
     // 1️⃣1️⃣ Update scheduler state (CRON and manual both)
     const nextSocialRun = new Date(
