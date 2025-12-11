@@ -14,7 +14,7 @@ import { publishToFacebook } from "@/lib/social/publishers/facebook";
 import { publishToInstagram } from "@/lib/social/publishers/instagram";
 
 import { saveImageToSupabase } from "@/lib/social/saveImage";
-
+/*
 // Weighted pick by percent_diff (bigger discount => higher chance)
 function weightedRandom(deals: any[]) {
   const total = deals.reduce(
@@ -30,6 +30,20 @@ function weightedRandom(deals: any[]) {
   }
   return deals[0];
 }
+
+
+function pickRandomDeal(deals: any[]) {
+  // 1. Remove deals with >= 60% discount
+  const filtered = deals.filter(d => (d.percent_diff ?? 0) < 60);
+
+  // 2. If filtering removes everything, fallback to original list
+  const pool = filtered.length > 0 ? filtered : deals;
+
+  // 3. Random selection from remaining
+  return pool[Math.floor(Math.random() * pool.length)];
+}
+
+*/
 
 export async function POST(req: Request) {
   const CRON_SECRET =
@@ -154,67 +168,124 @@ export async function POST(req: Request) {
     console.log("Allowed stores for social:", allowedStores);
 
     // 6️⃣ Fetch candidate deals (last 12 hours)
-    const since = new Date(now.getTime() - 12 * 60 * 60 * 1000).toISOString();
+   // 6️⃣ Fetch candidate deals (last 12 hours)
+const since = new Date(now.getTime() - 12 * 60 * 60 * 1000).toISOString();
 
-    const { data: rawDeals, error: dealsError } = await supabaseAdmin
-      .from("deals")
-      .select(
-        `
-        id,
-        description,
-        notes,
-        current_price,
-        old_price,
-        price_diff,
-        percent_diff,
-        image_link,
-        product_link,
-        review_link,
-        store_name,
-        slug,
-        published_at,
-        exclude_from_auto
-      `
-      )
-      .eq("status", "Published")
-      .eq("exclude_from_auto", false)
-      .in("store_name", allowedStores)
-      .gte("published_at", since)
-      .order("published_at", { ascending: false })
-      .limit(100);
+const { data: rawDeals, error: dealsError } = await supabaseAdmin
+  .from("deals")
+  .select(
+    `
+    id,
+    description,
+    notes,
+    current_price,
+    old_price,
+    price_diff,
+    percent_diff,
+    image_link,
+    product_link,
+    review_link,
+    store_name,
+    slug,
+    published_at,
+    exclude_from_auto
+  `
+  )
+  .eq("status", "Published")
+  .eq("exclude_from_auto", false)
+  .in("store_name", allowedStores)
+  .gte("published_at", since)
+  .order("published_at", { ascending: false })
+  .limit(100);
 
-    if (dealsError) throw dealsError;
+if (dealsError) throw dealsError;
 
-    if (!rawDeals || rawDeals.length === 0) {
-      console.log("❌ No deals available for social posting.");
+// If literally no deals, same as before
+if (!rawDeals || rawDeals.length === 0) {
+  console.log("❌ No deals available for social posting.");
 
-      await supabaseAdmin.from("auto_publish_logs").insert({
-        run_time: now.toISOString(),
-        action: "social_skip",
-        deals_published: 0,
-        message: "No eligible deals found.",
-      });
+  await supabaseAdmin.from("auto_publish_logs").insert({
+    run_time: now.toISOString(),
+    action: "social_skip",
+    deals_published: 0,
+    message: "No eligible deals found.",
+  });
 
-      const nextSocialRun = new Date(
-        now.getTime() + intervalMinutes * 60_000
-      ).toISOString();
+  const alignedNow = new Date(
+    Math.floor(now.getTime() / 60000) * 60000
+  );
+  const nextSocialRun = new Date(
+    alignedNow.getTime() + intervalMinutes * 60_000
+  ).toISOString();
 
-      await supabaseAdmin
-        .from("auto_publish_state")
-        .update({
-          social_last_run: now.toISOString(),
-          social_last_count: 0,
-          social_last_deal: null,
-          social_next_run: nextSocialRun,
-          updated_at: now.toISOString(),
-        })
-        .eq("id", 1);
+  await supabaseAdmin
+    .from("auto_publish_state")
+    .update({
+      social_last_run: now.toISOString(),
+      social_last_count: 0,
+      social_last_deal: null,
+      social_next_run: nextSocialRun,
+      updated_at: now.toISOString(),
+    })
+    .eq("id", 1);
 
-      return NextResponse.json({ skipped: true, reason: "no deals" });
-    }
+  return NextResponse.json({ skipped: true, reason: "no deals" });
+}
+
+// 6.1 Remove *last posted* deal (no immediate duplicates)
+let available = rawDeals.filter(
+  (d: any) => d.id !== state.social_last_deal
+);
+
+// 6.2 Filter out suspicious huge discounts (>= 60%)
+available = available.filter(
+  (d: any) => (d.percent_diff ?? 0) < 60
+);
+
+// 6.3 If no qualified deals → DO NOT POST AT ALL (option A for now)
+if (available.length === 0) {
+  console.log(
+    "❌ No qualified deals available (all are duplicates or >= 60% discount)."
+  );
+
+  await supabaseAdmin.from("auto_publish_logs").insert({
+    run_time: now.toISOString(),
+    action: "social_skip",
+    deals_published: 0,
+    message:
+      "No qualified deals (either already posted or discount >= 60%).",
+  });
+
+  const alignedNow = new Date(
+    Math.floor(now.getTime() / 60000) * 60000
+  );
+  const nextSocialRun = new Date(
+    alignedNow.getTime() + intervalMinutes * 60_000
+  ).toISOString();
+
+  await supabaseAdmin
+    .from("auto_publish_state")
+    .update({
+      social_last_run: now.toISOString(),
+      social_last_count: 0,
+      // keep social_last_deal as-is so we know what was last
+      social_next_run: nextSocialRun,
+      updated_at: now.toISOString(),
+    })
+    .eq("id", 1);
+
+  return NextResponse.json({
+    skipped: true,
+    reason: "no qualified deals",
+  });
+}
+
+// 6.4 Pick one randomly from remaining pool
+//const raw = available[Math.floor(Math.random() * available.length)];
+
 
     // 7️⃣ Pick a raw DB row and map → SelectedDeal
-    const raw = weightedRandom(rawDeals);
+    const raw = available[Math.floor(Math.random() * available.length)];
 
     const deal: SelectedDeal = {
       id: raw.id,
