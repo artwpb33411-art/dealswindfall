@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { Inter } from "next/font/google";
 import Script from "next/script";
+import TrackPageView from "./TrackPageView";
 
 import { Analytics } from "@vercel/analytics/react";
 import { SpeedInsights } from "@vercel/speed-insights/next";
@@ -70,6 +71,7 @@ export default function RootLayout({
       </head>
 
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
+       <TrackPageView /> 
         {children}
 
         {/* ---------------- VERCEL ANALYTICS ---------------- */}

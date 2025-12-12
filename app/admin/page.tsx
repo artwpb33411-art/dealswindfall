@@ -7,7 +7,7 @@ import DealsForm from "@/components/admin/DealsForm";
 import DealsList from "@/components/admin/DealsList";
 import ExportDeals from "@/components/admin/ExportDeals";
 import BulkUploadDeals from "@/components/admin/BulkUploadDeals";
-
+import AdminAnalytics from "@/components/admin/AdminAnalytics";
 import SeasonalEventsManager from "@/components/admin/SeasonalEventsManager";
 
 import AutoPublishPanel from "@/components/admin/AutoPublishPanel"; // ✔ Auto Publish Dashboard (Status, Platforms, Manual Actions)
@@ -25,6 +25,7 @@ export default function AdminPage() {
     { id: "autopublish", label: "🕒 Auto Publish" }, // ✔ Operational dashboard
     { id: "settings", label: "⚙️ Settings" },       // ✔ Configuration
     { id: "blog", label: "📝 Blog" },
+      { id: "analytics", label: "📊 Analytics" }, // ✅ new
   ];
 
   return (
@@ -121,6 +122,12 @@ export default function AdminPage() {
       {activeTab === "blog" && (
         <div>
           <BlogManager />
+        </div>
+      )}
+
+      {activeTab === "analytics" && (
+        <div>
+          <AdminAnalytics />
         </div>
       )}
 
