@@ -15,11 +15,12 @@ export async function GET(req: Request) {
       );
     }
 
+    // Use full-day range in UTC
     const startIso = new Date(start).toISOString();
     const endIso = new Date(end + "T23:59:59").toISOString();
 
     /* ======================================================
-       LOAD EVENTS (ONLY IN RANGE)
+       1️⃣ EVENTS IN DATE RANGE
     ====================================================== */
     const { data: events, error: eventsError } = await supabaseAdmin
       .from("analytics")
@@ -31,13 +32,14 @@ export async function GET(req: Request) {
     if (eventsError) throw eventsError;
 
     /* ======================================================
-       NEW vs RETURNING VISITORS
-       Using visitor_id; if missing, fallback to ip_address.
+       2️⃣ NEW vs RETURNING VISITORS
+       - Uses visitor_id when available
+       - Falls back to ip_address
     ====================================================== */
     type VisitorKey = string;
     const visitorFirstSeen: Record<VisitorKey, string> = {};
 
-    // Get first seen globally (across all time)
+    // First seen globally (all time)
     const { data: allVisitors, error: visitorsErr } = await supabaseAdmin
       .from("analytics")
       .select("visitor_id, ip_address, created_at")
@@ -54,7 +56,7 @@ export async function GET(req: Request) {
     });
 
     const visitorsInRange: Record<VisitorKey, boolean> = {};
-    events.forEach((ev) => {
+    events.forEach((ev: any) => {
       const key: VisitorKey =
         ev.visitor_id || ev.ip_address || "unknown-" + ev.id;
       visitorsInRange[key] = true;
@@ -74,7 +76,7 @@ export async function GET(req: Request) {
     });
 
     /* ======================================================
-       BASIC COUNTS
+       3️⃣ BASIC COUNTS & CLICK AGGREGATION
     ====================================================== */
     let totalPageViews = 0;
     let totalDealClicks = 0;
@@ -85,50 +87,69 @@ export async function GET(req: Request) {
     const categoryClicks: Record<string, number> = {};
     const dealClicks: Record<string, number> = {};
 
+    const internalDealClicks: Record<string, number> = {};
+    const outboundDealClicks: Record<string, number> = {};
+
     events.forEach((ev: any) => {
       const page = ev.page ?? "(empty)";
       const store = ev.store ?? "(unknown)";
       const category = ev.category ?? "(unknown)";
       const dealId = ev.deal_id ?? null;
+      const dealKey = dealId != null ? String(dealId) : null;
 
+      // PAGE VIEWS
       if (ev.event_type === "view") {
         totalPageViews++;
         pageCounts[page] = (pageCounts[page] || 0) + 1;
       }
 
+      // INTERNAL DEAL CLICK (list pane)
       if (ev.event_type === "click" && ev.event_name === "deal_click") {
         totalDealClicks++;
+
         if (ev.store) {
           storeClicks[store] = (storeClicks[store] || 0) + 1;
         }
         if (ev.category) {
           categoryClicks[category] = (categoryClicks[category] || 0) + 1;
         }
-        if (dealId != null) {
-          dealClicks[String(dealId)] =
-            (dealClicks[String(dealId)] || 0) + 1;
+        if (dealKey) {
+          dealClicks[dealKey] = (dealClicks[dealKey] || 0) + 1;
+          internalDealClicks[dealKey] =
+            (internalDealClicks[dealKey] || 0) + 1;
         }
       }
 
-      if (ev.event_type === "click" && ev.event_name === "deal_outbound_click") {
+      // OUTBOUND CLICK (to Amazon / Walmart etc.)
+      if (
+        ev.event_type === "click" &&
+        ev.event_name === "deal_outbound_click"
+      ) {
         totalOutboundClicks++;
+        if (dealKey) {
+          outboundDealClicks[dealKey] =
+            (outboundDealClicks[dealKey] || 0) + 1;
+        }
       }
     });
 
     /* ======================================================
-       DEALS PUBLISHED (STORE / CATEGORY)
+       4️⃣ DEALS PUBLISHED IN DATE RANGE (CTR denominator)
+       - This is where Option A CTR happens.
     ====================================================== */
-    const { data: deals, error: dealsErr } = await supabaseAdmin
+    const { data: dealsForCTR, error: dealsErr } = await supabaseAdmin
       .from("deals")
-      .select("id, store_name, category, status");
+      .select("id, store_name, category, status, published_at")
+      .eq("status", "Published")
+      .gte("published_at", startIso)
+      .lte("published_at", endIso);
 
     if (dealsErr) throw dealsErr;
 
     const storeDealCounts: Record<string, number> = {};
     const categoryDealCounts: Record<string, number> = {};
 
-    deals?.forEach((d: any) => {
-      if (d.status !== "Published") return;
+    dealsForCTR?.forEach((d: any) => {
       const store = d.store_name ?? "(unknown)";
       const category = d.category ?? "(unknown)";
       storeDealCounts[store] = (storeDealCounts[store] || 0) + 1;
@@ -137,7 +158,8 @@ export async function GET(req: Request) {
     });
 
     /* ======================================================
-       CTR (Clicks / Deals Published)
+       5️⃣ CTR CALCULATION (Store / Category)
+       CTR = clicks (in date range) / deals published (in date range)
     ====================================================== */
     const storeCTR: Record<string, number> = {};
     const categoryCTR: Record<string, number> = {};
@@ -155,28 +177,93 @@ export async function GET(req: Request) {
     });
 
     /* ======================================================
-       RETURN JSON
+       6️⃣ TOP DEALS (INTERNAL + OUTBOUND)
+       - Based on clicks during date range
+       - Enriched with description + store_name + category
+    ====================================================== */
+    const clickedDealIds = Array.from(
+      new Set([
+        ...Object.keys(internalDealClicks),
+        ...Object.keys(outboundDealClicks),
+      ])
+    ).map((id) => Number(id));
+
+    let dealMetaMap: Record<string, any> = {};
+
+    if (clickedDealIds.length > 0) {
+      const { data: dealsForClicks, error: metaErr } = await supabaseAdmin
+        .from("deals")
+        .select("id, description, store_name, category")
+        .in("id", clickedDealIds);
+
+      if (metaErr) throw metaErr;
+
+      (dealsForClicks || []).forEach((d: any) => {
+        dealMetaMap[String(d.id)] = d;
+      });
+    }
+
+    const topInternalDeals = Object.entries(internalDealClicks)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 20)
+      .map(([dealId, clicks]) => {
+        const meta = dealMetaMap[dealId] || {};
+        return {
+          deal_id: Number(dealId),
+          clicks,
+          description: meta.description ?? null,
+          store_name: meta.store_name ?? null,
+          category: meta.category ?? null,
+          internal_url: `/deal/${dealId}`,
+        };
+      });
+
+    const topOutboundDeals = Object.entries(outboundDealClicks)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 20)
+      .map(([dealId, clicks]) => {
+        const meta = dealMetaMap[dealId] || {};
+        return {
+          deal_id: Number(dealId),
+          clicks,
+          description: meta.description ?? null,
+          store_name: meta.store_name ?? null,
+          category: meta.category ?? null,
+          internal_url: `/deal/${dealId}`, // you only want your own URL
+        };
+      });
+
+    /* ======================================================
+       7️⃣ RETURN JSON
     ====================================================== */
     return NextResponse.json({
       total_events: events.length,
+
+      // Visitors
       unique_visitors: Object.keys(visitorsInRange).length,
       new_visitors: newVisitors,
       returning_visitors: returningVisitors,
 
+      // Activity
       total_page_views: totalPageViews,
       total_deal_clicks: totalDealClicks,
       total_outbound_clicks: totalOutboundClicks,
 
+      // Breakdown
       page_counts: pageCounts,
       store_clicks: storeClicks,
       category_clicks: categoryClicks,
       deal_clicks: dealClicks,
 
+      // Deals & CTR (Option A)
       store_deal_counts: storeDealCounts,
       category_deal_counts: categoryDealCounts,
-
       store_ctr: storeCTR,
       category_ctr: categoryCTR,
+
+      // Top deals
+      top_internal_deals: topInternalDeals,
+      top_outbound_deals: topOutboundDeals,
     });
   } catch (err: any) {
     console.error("Analytics route error:", err);
