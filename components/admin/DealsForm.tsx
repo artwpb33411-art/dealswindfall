@@ -257,26 +257,7 @@ const generateAI = async () => {
         rows={3}
       />
 
-      {/* --------------------------
-           SPANISH TITLE + DESCRIPTION
-      -------------------------- */}
-      <input
-        name="description_es"
-        value={form.description_es}
-        onChange={onChange}
-        placeholder="Título en Español"
-        className="input"
-      />
-
-      <textarea
-        name="notes_es"
-        value={form.notes_es}
-        onChange={onChange}
-        placeholder="Descripción en Español"
-        className="input"
-        rows={3}
-      />
-
+     
       {/* --------------------------
            PRICES + STORE
       -------------------------- */}
@@ -336,7 +317,65 @@ const generateAI = async () => {
         className="input"
       />
 
-      <input
+     
+    
+	  
+	   <select
+        name="category"
+        value={form.category}
+        onChange={onChange}
+        className="input"
+      >
+        {CAT_TAGS.map((tag) => (
+          <option key={tag} value={tag}>
+            {tag || "No Category"}
+          </option>
+        ))}
+      </select>
+	  
+	  
+	  
+	  
+
+      {/* Holiday */}
+      <select
+        name="holidayTag"
+        value={form.holidayTag}
+        onChange={onChange}
+        className="input"
+      >
+        {HOLIDAY_TAGS.map((tag) => (
+          <option key={tag} value={tag}>
+            {tag || "No holiday / event"}
+          </option>
+        ))}
+      </select>
+
+ {/* --------------------------
+           AI SEO GENERATION
+      -------------------------- */}
+      <button
+        type="button"
+        onClick={generateAI}
+        disabled={fetchingAI}
+        className={`w-full p-2 rounded text-white ${
+          fetchingAI ? "bg-gray-400" : "bg-purple-600 hover:bg-purple-700"
+        }`}
+      >
+        {fetchingAI ? "Generating..." : "✨ AI: Generate EN + ES SEO"}
+      </button>
+
+      {/* --------------------------
+           SAVE BUTTON
+      -------------------------- */}
+      <button
+        type="submit"
+        disabled={saving}
+        className="w-full bg-blue-600 text-white p-2 rounded-md hover:bg-blue-700 transition"
+      >
+        {saving ? "Saving..." : "Save Deal"}
+      </button>
+       <input
         name="reviewLink"
         value={form.reviewLink}
         onChange={onChange}
@@ -371,64 +410,27 @@ const generateAI = async () => {
         className="input"
       />
 
-    
-	  
-	   <select
-        name="category"
-        value={form.category}
-        onChange={onChange}
-        className="input"
-      >
-        {CAT_TAGS.map((tag) => (
-          <option key={tag} value={tag}>
-            {tag || "No Category"}
-          </option>
-        ))}
-      </select>
-	  
-	  
-	  
-	  
-
-      {/* Holiday */}
-      <select
-        name="holidayTag"
-        value={form.holidayTag}
-        onChange={onChange}
-        className="input"
-      >
-        {HOLIDAY_TAGS.map((tag) => (
-          <option key={tag} value={tag}>
-            {tag || "No holiday / event"}
-          </option>
-        ))}
-      </select>
-
-
  {/* --------------------------
-           AI SEO GENERATION
+           SPANISH TITLE + DESCRIPTION
       -------------------------- */}
-      <button
-        type="button"
-        onClick={generateAI}
-        disabled={fetchingAI}
-        className={`w-full p-2 rounded text-white ${
-          fetchingAI ? "bg-gray-400" : "bg-purple-600 hover:bg-purple-700"
-        }`}
-      >
-        {fetchingAI ? "Generating..." : "✨ AI: Generate EN + ES SEO"}
-      </button>
+      <input
+        name="description_es"
+        value={form.description_es}
+        onChange={onChange}
+        placeholder="Título en Español"
+        className="input"
+      />
 
-      {/* --------------------------
-           SAVE BUTTON
-      -------------------------- */}
-      <button
-        type="submit"
-        disabled={saving}
-        className="w-full bg-blue-600 text-white p-2 rounded-md hover:bg-blue-700 transition"
-      >
-        {saving ? "Saving..." : "Save Deal"}
-      </button>
+      <textarea
+        name="notes_es"
+        value={form.notes_es}
+        onChange={onChange}
+        placeholder="Descripción en Español"
+        className="input"
+        rows={3}
+      />
+
+
     </form>
   );
 }
