@@ -1,4 +1,5 @@
 "use client";
+import { trackEvent } from "@/lib/trackEvent";
 
 import Image from "next/image";
 
@@ -104,11 +105,22 @@ export default function DealCard({
         {/* Link */}
         {link && (
           <a
-            href={link}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="mt-2 w-full text-center bg-blue-600 text-white text-sm py-2 rounded-md hover:bg-blue-700 transition"
-          >
+           href={link}
+  target="_blank"
+  rel="noopener noreferrer"
+  onClick={() =>
+    trackEvent({
+      event_name: "deal_outbound_click",
+      event_type: "click",
+      page: window.location.pathname,
+      deal_id: link ? Number(link.split("/").pop()) : null,
+      store,
+      category,
+      device: navigator.userAgent,
+    })
+  }
+  className="mt-2 w-full text-center bg-blue-600 text-white text-sm py-2 rounded-md hover:bg-blue-700 transition"
+>
             View Deal
           </a>
         )}

@@ -1,4 +1,5 @@
 "use client";
+import { trackEvent } from "@/lib/trackEvent";
 
 import { useState, useEffect } from "react";
 import Disclaimer from "@/components/Disclaimer";
@@ -116,15 +117,26 @@ export default function DealDetail({ deal }: { deal: any }) {
 
         {/* Button */}
         {deal.product_link && (
-          <a
-            href={deal.product_link}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-block w-full sm:w-auto text-center bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-md font-semibold shadow transition mb-6"
-          >
-            {viewDealText}
-          </a>
-        )}
+  <a
+    href={deal.product_link}
+    target="_blank"
+    rel="noopener noreferrer"
+    onClick={() =>
+      trackEvent({
+        event_name: "deal_outbound_click",
+        event_type: "click",
+        page: window.location.pathname,
+        deal_id: deal.id,
+        store: deal.store_name,
+        category: deal.category,
+        device: navigator.userAgent,
+      })
+    }
+    className="inline-block w-full sm:w-auto text-center bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-md font-semibold shadow transition mb-6"
+  >
+    {viewDealText}
+  </a>
+)}
 
         {/* Coupon Code */}
         {deal.coupon_code && (

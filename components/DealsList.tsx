@@ -1,4 +1,5 @@
 "use client";
+import { trackEvent } from "@/lib/trackEvent";
 
 import { useEffect, useState, useRef } from "react";
 import { createClient } from "@supabase/supabase-js";
@@ -197,17 +198,22 @@ export default function DealsList({
           <a
             key={deal.id}
             href={`/deal/${deal.id}`}
-            onClick={(e) => {
-              e.preventDefault();
-              track({
-                event_type: "deal_click",
-                deal_id: deal.id,
-                page: "/",
-                user_agent: navigator.userAgent,
-                ip_address: null,
-              });
-              onSelectDeal(deal);
-            }}
+           onClick={(e) => {
+  e.preventDefault();
+
+  trackEvent({
+    event_name: "deal_click",
+    event_type: "click",
+    page: window.location.pathname,
+    deal_id: deal.id,
+    store: deal.store_name,
+    category: deal.category,
+    device: navigator.userAgent,
+  });
+
+  onSelectDeal(deal);
+}}
+
             className="flex items-center gap-4 p-3 h-32 hover:bg-gray-100 cursor-pointer transition"
           >
             <div className="w-20 h-20 flex-shrink-0 bg-gray-100 rounded-md overflow-hidden">
