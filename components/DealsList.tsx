@@ -1,19 +1,30 @@
 "use client";
-import { trackEvent } from "@/lib/trackEvent";
 
 import { useEffect, useState, useRef } from "react";
 import { createClient } from "@supabase/supabase-js";
-import useDebounce from "@/hooks/useDebounce";
-import track from "@/lib/track";
-import { useLangStore } from "@/lib/languageStore";   // ⭐ ADDED
+import { initDealScrollPauseTracker } from "@/lib/analytics/dealScrollPause";
 
+import { trackEvent } from "@/lib/trackEvent";
+import useDebounce from "@/hooks/useDebounce";
+import { useLangStore } from "@/lib/languageStore";
+
+/* -------------------------------------------------------------
+   Supabase
+------------------------------------------------------------- */
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 );
 
+/* -------------------------------------------------------------
+   Constants
+------------------------------------------------------------- */
 const LIMIT = 20;
+const SCROLL_DEPTHS = [25, 50, 75, 100];
 
+/* -------------------------------------------------------------
+   Component
+------------------------------------------------------------- */
 export default function DealsList({
   selectedStore,
   selectedCategory,
@@ -23,8 +34,9 @@ export default function DealsList({
   searchQuery,
   scrollRef,
 }: any) {
-
-  // ⭐ LANGUAGE STORE SUPPORT
+  /* -----------------------------------------------------------
+     Language store
+  ----------------------------------------------------------- */
   const { lang, hydrate, hydrated } = useLangStore();
 
   useEffect(() => {
@@ -33,12 +45,14 @@ export default function DealsList({
 
   if (!hydrated) return null;
 
-  // ⭐ TRANSLATION OF TEXT
   const t = {
     loading: lang === "en" ? "Loading deals..." : "Cargando ofertas...",
     noDeals: lang === "en" ? "No deals found." : "Sin ofertas disponibles.",
   };
 
+  /* -----------------------------------------------------------
+     State
+  ----------------------------------------------------------- */
   const [deals, setDeals] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -46,11 +60,13 @@ export default function DealsList({
   const [hasMore, setHasMore] = useState(true);
 
   const containerRef = useRef<HTMLDivElement | null>(null);
+  const firedDepths = useRef<Set<number>>(new Set());
+
   const debouncedSearch = useDebounce(searchQuery, 300);
 
-  /* =============================
-     BUILD SUPABASE QUERY
-  ============================== */
+  /* -----------------------------------------------------------
+     Build Supabase query
+  ----------------------------------------------------------- */
   const buildQuery = () => {
     let query = supabase
       .from("deals")
@@ -69,7 +85,9 @@ export default function DealsList({
     if (selectedHoliday) {
       query = query.eq(
         "holiday_tag",
-        selectedHoliday.replace(/-/g, " ").replace(/\b\w/g, (c: string) => c.toUpperCase())
+        selectedHoliday
+          .replace(/-/g, " ")
+          .replace(/\b\w/g, (c: string) => c.toUpperCase())
       );
     }
 
@@ -78,7 +96,6 @@ export default function DealsList({
     }
 
     if (debouncedSearch) {
-      // ⭐ bilingual search (description + description_es)
       query = query.or(
         `description.ilike.%${debouncedSearch}%,description_es.ilike.%${debouncedSearch}%,store_name.ilike.%${debouncedSearch}%,category.ilike.%${debouncedSearch}%`
       );
@@ -87,14 +104,15 @@ export default function DealsList({
     return query;
   };
 
-  /* =============================
-     FIRST PAGE LOAD
-  ============================== */
+  /* -----------------------------------------------------------
+     Initial load
+  ----------------------------------------------------------- */
   useEffect(() => {
-    const loadFirst = async () => {
+    const loadFirstPage = async () => {
       setLoading(true);
       setPage(0);
       setHasMore(true);
+      firedDepths.current.clear();
 
       const { data, error } = await buildQuery().range(0, LIMIT - 1);
 
@@ -113,26 +131,26 @@ export default function DealsList({
       setLoading(false);
     };
 
-    loadFirst();
+    loadFirstPage();
   }, [
     selectedStore,
     selectedCategory,
     selectedHoliday,
     showHotDeals,
     debouncedSearch,
-    lang, // ⭐ rerun when language changes
+    lang,
   ]);
 
-  /* =============================
-     LOAD MORE (INFINITE SCROLL)
-  ============================== */
+  /* -----------------------------------------------------------
+     Load more (infinite scroll)
+  ----------------------------------------------------------- */
   const loadMore = async () => {
     if (loadingMore || !hasMore) return;
 
     setLoadingMore(true);
 
-    const next = page + 1;
-    const from = next * LIMIT;
+    const nextPage = page + 1;
+    const from = nextPage * LIMIT;
     const to = from + LIMIT - 1;
 
     const { data, error } = await buildQuery().range(from, to);
@@ -144,44 +162,98 @@ export default function DealsList({
       );
 
       setDeals(unique);
-      setPage(next);
+      setPage(nextPage);
       setHasMore(data.length === LIMIT);
     }
 
     setLoadingMore(false);
   };
 
-  /* =============================
-     SCROLL LISTENER
-  ============================== */
+const intentCleanupRef = useRef<null | (() => void)>(null);
+
+useEffect(() => {
+  if (!deals.length) return;
+
+  let visitorId = localStorage.getItem("visitor_id");
+  if (!visitorId) {
+   // visitorId = crypto.randomUUID();
+    let visitorId = localStorage.getItem("visitor_id");
+
+if (!visitorId) {
+  visitorId =
+    typeof crypto !== "undefined" && "randomUUID" in crypto
+      ? crypto.randomUUID()
+      : Math.random().toString(36).slice(2);
+
+  localStorage.setItem("visitor_id", visitorId);
+}
+
+  }
+
+  // Cleanup old observer
+  intentCleanupRef.current?.();
+
+  // Init new observer AFTER DOM updates
+  requestAnimationFrame(() => {
+    intentCleanupRef.current = initDealScrollPauseTracker(visitorId);
+  });
+
+  return () => {
+    intentCleanupRef.current?.();
+  };
+}, [deals]);
+
+  /* -----------------------------------------------------------
+     Scroll listener (infinite scroll + depth tracking)
+  ----------------------------------------------------------- */
   useEffect(() => {
     const div = containerRef.current;
     if (!div) return;
 
     const onScroll = () => {
-      if (loading || loadingMore || !hasMore) return;
+      if (loading || loadingMore) return;
 
-      if (div.scrollTop + div.clientHeight >= div.scrollHeight - 200) {
+      // Infinite scroll
+      if (hasMore && div.scrollTop + div.clientHeight >= div.scrollHeight - 200) {
         loadMore();
       }
+
+      // Scroll depth tracking
+      const maxScroll = div.scrollHeight - div.clientHeight;
+      if (maxScroll <= 0) return;
+
+      const percent = Math.round((div.scrollTop / maxScroll) * 100);
+
+      SCROLL_DEPTHS.forEach((depth) => {
+        if (percent >= depth && !firedDepths.current.has(depth)) {
+          firedDepths.current.add(depth);
+
+          trackEvent({
+            event_name: "scroll_depth",
+            event_type: "engagement",
+            page: window.location.pathname,
+            metadata: { depth },
+          });
+        }
+      });
     };
 
     div.addEventListener("scroll", onScroll);
     return () => div.removeEventListener("scroll", onScroll);
   }, [loading, loadingMore, hasMore, page]);
 
-  /* =============================
-     EXPOSE SCROLL TO PARENT
-  ============================== */
+  /* -----------------------------------------------------------
+     Expose scroll container to parent
+  ----------------------------------------------------------- */
   useEffect(() => {
     if (scrollRef && "current" in scrollRef) {
       scrollRef.current = containerRef.current;
     }
   }, [scrollRef]);
 
-  /* =============================
+  /* -----------------------------------------------------------
      UI
-  ============================== */
+  ----------------------------------------------------------- */
   if (loading) return <p className="text-center mt-10">{t.loading}</p>;
   if (!deals.length) return <p className="text-center mt-10">{t.noDeals}</p>;
 
@@ -192,28 +264,27 @@ export default function DealsList({
     >
       {deals.map((deal) => {
         const title = lang === "en" ? deal.description : deal.description_es;
-        const notes = lang === "en" ? deal.notes : deal.notes_es;
 
         return (
           <a
             key={deal.id}
+            data-deal-id={deal.id}
             href={`/deal/${deal.id}`}
-           onClick={(e) => {
-  e.preventDefault();
+            onClick={(e) => {
+              e.preventDefault();
 
-  trackEvent({
-    event_name: "deal_click",
-    event_type: "click",
-    page: window.location.pathname,
-    deal_id: deal.id,
-    store: deal.store_name,
-    category: deal.category,
-    device: navigator.userAgent,
-  });
+              trackEvent({
+                event_name: "deal_click",
+                event_type: "click",
+                page: window.location.pathname,
+                deal_id: deal.id,
+                store: deal.store_name,
+                category: deal.category,
+                device: navigator.userAgent,
+              });
 
-  onSelectDeal(deal);
-}}
-
+              onSelectDeal(deal);
+            }}
             className="flex items-center gap-4 p-3 h-32 hover:bg-gray-100 cursor-pointer transition"
           >
             <div className="w-20 h-20 flex-shrink-0 bg-gray-100 rounded-md overflow-hidden">
@@ -252,18 +323,8 @@ export default function DealsList({
                   </span>
                 )}
 
-                {deal.percent_diff >= 70 ? (
-                  <span className="text-red-600 text-lg">🔥🔥🔥</span>
-                ) : deal.percent_diff >= 60 ? (
-                  <span className="text-orange-500 text-lg">🔥🔥</span>
-                ) : deal.percent_diff >= 50 ? (
-                  <span className="text-amber-500 text-lg">🔥</span>
-                ) : deal.percent_diff >= 40 ? (
-                  <span className="text-yellow-600 text-lg">🌡️</span>
-                ) : null}
-
                 {deal.percent_diff && (
-                  <span className="text-sm font-bold text-green-600">
+                  <span className="ml-2 text-sm font-bold text-green-600">
                     -{deal.percent_diff.toFixed(0)}%
                   </span>
                 )}
