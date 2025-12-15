@@ -16,6 +16,47 @@ export default function AdminAnalytics() {
   );
   const [end, setEnd] = useState(format(new Date(), "yyyy-MM-dd"));
 
+
+  const SimpleTable = ({
+  title,
+  data,
+}: {
+  title: string;
+  data: Record<string, number>;
+}) => {
+  const rows = Object.entries(data || {}).sort((a, b) => b[1] - a[1]);
+
+  if (!rows.length)
+    return (
+      <div className="bg-white p-4 border rounded shadow">
+        <h3 className="font-semibold mb-2">{title}</h3>
+        <p className="text-gray-500 text-sm">No data available.</p>
+      </div>
+    );
+
+  return (
+    <div className="bg-white p-4 border rounded shadow">
+      <h3 className="font-semibold mb-3">{title}</h3>
+      <table className="w-full text-sm border">
+        <thead className="bg-gray-100">
+          <tr>
+            <th className="p-2 border text-left">Type</th>
+            <th className="p-2 border text-left">Count</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map(([key, count]) => (
+            <tr key={key}>
+              <td className="p-2 border">{key || "(unknown)"}</td>
+              <td className="p-2 border font-semibold">{count}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+};
+
   /* ------------------------------------------------------------------
      LOAD ANALYTICS
   ------------------------------------------------------------------ */
@@ -364,6 +405,39 @@ export default function AdminAnalytics() {
           deals={stats.top_outbound_deals}
         />
       </div>
-    </div>
+   {/* TECHNOLOGY OVERVIEW */}
+<section className="space-y-6">
+  <h3 className="text-2xl font-bold text-blue-600">
+    🖥️ Technology Overview
+  </h3>
+
+  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+    <SimpleTable
+      title="Device Types"
+      data={stats.device_types}
+    />
+
+    <SimpleTable
+      title="Operating Systems"
+      data={stats.operating_systems}
+    />
+
+    <SimpleTable
+      title="Browsers"
+      data={stats.browsers}
+    />
+
+    <SimpleTable
+      title="Screen Sizes"
+      data={stats.screen_sizes}
+    />
+  </div>
+</section>
+
+     </div>
+
+     
   );
+
+  
 }

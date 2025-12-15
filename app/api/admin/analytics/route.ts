@@ -2,6 +2,23 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 
+
+function normalizeBrowser(device: string | null, ua: string | null) {
+  const s = (device || ua || "").toLowerCase();
+
+  if (s.includes("edg")) return "Edge";
+  if (s.includes("chrome") && !s.includes("edg")) return "Chrome";
+  if (s.includes("firefox")) return "Firefox";
+  if (s.includes("safari") && !s.includes("chrome")) return "Safari";
+  if (s.includes("samsungbrowser")) return "Samsung Internet";
+  if (s.includes("vercel")) return "Vercel Bot";
+  if (s.includes("google-read-aloud")) return "Google Bot";
+
+  return "Other";
+}
+
+
+
 export async function GET(req: Request) {
   try {
     const { searchParams } = new URL(req.url);
@@ -232,6 +249,39 @@ export async function GET(req: Request) {
           internal_url: `/deal/${dealId}`, // you only want your own URL
         };
       });
+// --- NEW TECH STATS ---
+
+// --- TECH STATS ---
+const device_types: Record<string, number> = {};
+const operating_systems: Record<string, number> = {};
+const browsers: Record<string, number> = {};
+const screen_sizes: Record<string, number> = {};
+
+(events || []).forEach((r: any) => {
+  // Browser (stored in `device`)
+  if (r.device) {
+    const browser = normalizeBrowser(r.device, r.user_agent);
+  browsers[browser] = (browsers[browser] || 0) + 1;
+  }
+
+  const meta = r.metadata || {};
+
+  if (meta.device_type) {
+    device_types[meta.device_type] =
+      (device_types[meta.device_type] || 0) + 1;
+  }
+
+  if (meta.os) {
+    operating_systems[meta.os] =
+      (operating_systems[meta.os] || 0) + 1;
+  }
+
+  if (meta.screen) {
+    screen_sizes[meta.screen] =
+      (screen_sizes[meta.screen] || 0) + 1;
+  }
+});
+
 
     /* ======================================================
        7️⃣ RETURN JSON
@@ -264,6 +314,10 @@ export async function GET(req: Request) {
       // Top deals
       top_internal_deals: topInternalDeals,
       top_outbound_deals: topOutboundDeals,
+      device_types,
+  operating_systems,
+  browsers,
+  screen_sizes,
     });
   } catch (err: any) {
     console.error("Analytics route error:", err);

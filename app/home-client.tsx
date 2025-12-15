@@ -18,6 +18,10 @@ import PrivacyPage from "@/components/static/PrivacyPage";
 import ContactPage from "@/components/static/ContactPage";
 import MobileBottomNav from "@/components/MobileBottomNav";
 import useDebounce from "@/hooks/useDebounce";
+//import { initScrollDepthTracker } from "@/lib/analytics/scrollDepth";
+//import { initDealScrollPauseTracker } from "@/lib/analytics/dealScrollPause";
+
+
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -189,6 +193,27 @@ export default function HomeClient() {
 useEffect(() => {
   hydrate();
 }, []);
+
+
+// ------------ Analytics (Scroll + Intent) ------------
+/*useEffect(() => {
+  if (typeof window === "undefined") return;
+
+  let visitorId = localStorage.getItem("visitor_id");
+  if (!visitorId) {
+    visitorId = crypto.randomUUID();
+    localStorage.setItem("visitor_id", visitorId);
+  }
+
+  const cleanupScroll = initScrollDepthTracker(visitorId);
+  const cleanupIntent = initDealScrollPauseTracker(visitorId);
+
+  return () => {
+    cleanupScroll();
+    cleanupIntent();
+  };
+}, []);
+*/
 
 if (!hydrated) return null;
 
