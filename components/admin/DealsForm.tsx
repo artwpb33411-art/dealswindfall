@@ -1,64 +1,93 @@
 "use client";
-import { useState } from "react";
 
-export default function DealsForm() {
-  const [form, setForm] = useState({
-    description: "",        // EN Title
-    notes: "",              // EN Description
-    description_es: "",     // ES Title
-    notes_es: "",           // ES Description
+import { useEffect, useState } from "react";
 
-    currentPrice: "",
-    oldPrice: "",
-    storeName: "",
-    imageLink: "",
-    productLink: "",
-    reviewLink: "",
-    couponCode: "",
-    shippingCost: "",
-    expireDate: "",
-    category: "",
-    holidayTag: "",
-  });
-
-  const HOLIDAY_TAGS = [
-    "",
-    "Black Friday", "Cyber Monday", "Thanksgiving Week",
-    "Christmas", "New Year", "Back to School",
-    "Prime Day", "Memorial Day", "Labor Day", "Independence Day",
-    "Spring Sale", "World Cup",
-  ];
+/* -------------------------------------------------------------
+   Constants
+------------------------------------------------------------- */
 
 const STORE_TAGS = [
-    "",
-    "Amazon", "Walmart", "Target",
-    "Home Depot", "Costco", "Best Buy",
-    "Sam’s Club", "Lowe’s", "Kohl’s", "Macy’s",
-    "Staples", "Office Depot", "JCPenney",
-  ];
+  "",
+  "Amazon","Walmart","Target","Home Depot","Costco","Best Buy",
+  "Sam’s Club","Lowe’s","Kohl’s","Macy’s","Staples","Office Depot","JCPenney",
+];
 
 const CAT_TAGS = [
-    "",
-    "Electronics", "Clothing & Apparel", "Kids & Toys", "Home & Kitchen",
-    "Beauty & Personal Care", "Grocery & Food", "Appliances",
-    "Health & Wellness", "Pet Supplies",
-  ];
+  "",
+  "Electronics","Clothing & Apparel","Kids & Toys","Home & Kitchen",
+  "Beauty & Personal Care","Grocery & Food","Appliances",
+  "Health & Wellness","Pet Supplies",
+];
 
+const HOLIDAY_TAGS = [
+  "",
+  "Black Friday","Cyber Monday","Thanksgiving Week",
+  "Christmas","New Year","Back to School","Prime Day",
+  "Memorial Day","Labor Day","Independence Day","Spring Sale","World Cup",
+];
 
+const DEFAULT_FORM = {
+  description: "",
+  notes: "",
+  description_es: "",
+  notes_es: "",
+
+  currentPrice: "",
+  oldPrice: "",
+  storeName: "",
+  imageLink: "",
+  productLink: "",
+  reviewLink: "",
+  couponCode: "",
+  shippingCost: "",
+  expireDate: "",
+  category: "",
+  holidayTag: "",
+};
+
+/* -------------------------------------------------------------
+   Component
+------------------------------------------------------------- */
+
+export default function DealsForm() {
+  const [form, setForm] = useState(DEFAULT_FORM);
   const [productUrl, setProductUrl] = useState("");
-  const [fetching, setFetching] = useState(false);
-  const [fetchingAI, setFetchingAI] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [fetching, setFetching] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
+  const [generateAI, setGenerateAI] = useState(true);
 
-  const onChange = (e: any) =>
-    setForm({ ...form, [e.target.name]: e.target.value });
+  /* -------------------------------------------------------------
+     Restore last selections (client only)
+  ------------------------------------------------------------- */
+  useEffect(() => {
+    setForm(prev => ({
+      ...prev,
+      storeName: localStorage.getItem("lastStoreName") || "",
+      category: localStorage.getItem("lastCategory") || "",
+      holidayTag: localStorage.getItem("lastHolidayTag") || "",
+    }));
+  }, []);
 
-  // ---------------------------------------------------
-  // 1) AUTO-SCRAPE BUTTON (Amazon/Walmart/Target)
-  // ---------------------------------------------------
+  /* -------------------------------------------------------------
+     Handlers
+  ------------------------------------------------------------- */
+
+  const onChange = (e: any) => {
+    const { name, value } = e.target;
+    setForm(prev => ({ ...prev, [name]: value }));
+
+    if (name === "storeName") localStorage.setItem("lastStoreName", value);
+    if (name === "category") localStorage.setItem("lastCategory", value);
+    if (name === "holidayTag") localStorage.setItem("lastHolidayTag", value);
+  };
+
+  /* -------------------------------------------------------------
+     Auto scrape product info
+  ------------------------------------------------------------- */
   const handleAutoFetch = async () => {
-    if (!productUrl) return alert("Please paste product link first.");
+    if (!productUrl) return alert("Paste a product URL first.");
+
     setFetching(true);
     setMsg("⏳ Fetching product data...");
 
@@ -72,7 +101,7 @@ const CAT_TAGS = [
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Failed to scrape");
 
-      setForm((prev) => ({
+      setForm(prev => ({
         ...prev,
         description: data.title || prev.description,
         currentPrice: data.price?.replace(/[^0-9.]/g, "") || prev.currentPrice,
@@ -82,75 +111,17 @@ const CAT_TAGS = [
         productLink: productUrl,
       }));
 
-      setMsg("✅ Product info fetched successfully!");
+      setMsg("✅ Product info fetched");
     } catch (err: any) {
-      console.error(err);
       setMsg("❌ " + err.message);
+    } finally {
+      setFetching(false);
     }
-
-    setFetching(false);
   };
-// 2) AI BUTTON → Rewrite EN + ES SEO Titles & Descriptions
-const generateAI = async () => {
-  if (!form.description.trim()) {
-    return alert("Enter the English Title before generating AI content.");
-  }
 
-  setFetchingAI(true);
-  setMsg("⏳ Rewriting English & Spanish titles and descriptions...");
-
-  try {
-    const res = await fetch("/api/ai-generate-seo", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        title: form.description,
-        notes: form.notes,
-        storeName: form.storeName,
-        category: form.category,
-        currentPrice: form.currentPrice,
-        oldPrice: form.oldPrice,
-        shippingCost: form.shippingCost,
-        couponCode: form.couponCode,
-        holidayTag: form.holidayTag,
-        productLink: form.productLink,
-      }),
-    });
-
-    const data = await res.json();
-
-    // Fallback or AI failure
-    if (!data.success) {
-      setForm(prev => ({
-        ...prev,
-        description_es: data.title_es || prev.description,
-        notes_es: data.description_es || prev.notes,
-      }));
-      setMsg("⚠️ AI unavailable — kept English text, copied to Spanish.");
-    } else {
-      // Success
-      setForm(prev => ({
-        ...prev,
-        description: data.title_en,
-        notes: data.description_en,
-        description_es: data.title_es,
-        notes_es: data.description_es,
-      }));
-      setMsg("✅ AI generated full English & Spanish SEO content!");
-    }
-
-  } catch (err: any) {
-    console.error(err);
-    setMsg("❌ AI error: " + err.message);
-  }
-
-  setFetchingAI(false);
-};
-
-
-  // ---------------------------------------------------
-  // 3) SUBMIT → Save to Supabase (/api/deals)
-  // ---------------------------------------------------
+  /* -------------------------------------------------------------
+     Submit (AI runs async in backend)
+  ------------------------------------------------------------- */
   const onSubmit = async (e: any) => {
     e.preventDefault();
     setSaving(true);
@@ -160,277 +131,107 @@ const generateAI = async () => {
       const res = await fetch("/api/deals", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(form),
+        body: JSON.stringify({
+          ...form,
+          ai_requested: generateAI,
+        }),
       });
 
       const data = await res.json();
-      setSaving(false);
-
-      if (!res.ok) {
-        setMsg("❌ " + (data.error || "Failed to save deal"));
-        return;
-      }
+      if (!res.ok) throw new Error(data.error || "Failed to save deal");
 
       setMsg("✅ Deal saved successfully!");
 
-      // Reset form
-      setForm({
-        description: "",
-        notes: "",
-        description_es: "",
-        notes_es: "",
-        currentPrice: "",
-        oldPrice: "",
-        storeName: "",
-        imageLink: "",
-        productLink: "",
-        reviewLink: "",
-        couponCode: "",
-        shippingCost: "",
-        expireDate: "",
-        category: "",
-        holidayTag: "",
-      });
+      setForm(prev => ({
+        ...DEFAULT_FORM,
+        storeName: prev.storeName,
+        category: prev.category,
+        holidayTag: prev.holidayTag,
+      }));
       setProductUrl("");
-
     } catch (err: any) {
-      console.error(err);
-      setMsg("❌ Network error");
+      setMsg("❌ " + err.message);
+    } finally {
       setSaving(false);
     }
   };
 
-  // ---------------------------------------------------
-  // UI Form
-  // ---------------------------------------------------
+  /* -------------------------------------------------------------
+     Render
+  ------------------------------------------------------------- */
+
   return (
-    <form
-      onSubmit={onSubmit}
-      className="bg-white shadow p-6 rounded-md space-y-4 max-w-2xl border border-gray-300"
-    >
-      <h2 className="text-xl font-semibold text-blue-600 mb-2">
-        Add New Deal
-      </h2>
+    <form onSubmit={onSubmit} className="bg-white p-6 rounded shadow space-y-4 max-w-2xl">
+      <h2 className="text-lg font-semibold text-blue-600">Add New Deal</h2>
       {msg && <div className="text-sm">{msg}</div>}
 
-      {/* --------------------------
-           SCRAPE PRODUCT INFO
-      -------------------------- */}
+      {/* Scrape */}
       <div className="flex gap-2">
         <input
           type="url"
-          placeholder="Paste Amazon / Walmart / Target product link..."
           value={productUrl}
-          onChange={(e) => setProductUrl(e.target.value)}
-          className="border p-2 rounded flex-1"
+          onChange={e => setProductUrl(e.target.value)}
+          placeholder="Paste Amazon / Walmart / Target product link..."
+          className="input flex-1"
         />
         <button
           type="button"
           onClick={handleAutoFetch}
           disabled={fetching}
-          className={`px-4 py-2 rounded text-white ${
-            fetching ? "bg-gray-400" : "bg-blue-600 hover:bg-blue-700"
-          }`}
+          className="px-4 py-2 rounded bg-blue-600 text-white"
         >
           {fetching ? "Fetching..." : "Fetch"}
         </button>
       </div>
 
-     
-      {/* --------------------------
-           ENGLISH TITLE + DESCRIPTION
-      -------------------------- */}
-      <input
-        name="description"
-        value={form.description}
-        onChange={onChange}
-        placeholder="English Title"
-        className="input"
-      />
+      {/* EN */}
+      <input name="description" value={form.description} onChange={onChange} placeholder="English Title" className="input" />
+      <textarea name="notes" value={form.notes} onChange={onChange} placeholder="English Description" rows={3} className="input" />
 
-      <textarea
-        name="notes"
-        value={form.notes}
-        onChange={onChange}
-        placeholder="English Description"
-        className="input"
-        rows={3}
-      />
-
-     
-      {/* --------------------------
-           PRICES + STORE
-      -------------------------- */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <input
-          name="currentPrice"
-          value={form.currentPrice}
-          onChange={onChange}
-          placeholder="Current Price"
-          className="input"
-        />
-        <input
-          name="oldPrice"
-          value={form.oldPrice}
-          onChange={onChange}
-          placeholder="Old Price"
-          className="input"
-        />
-       
-		 <select
-        name="storeName"
-        value={form.storeName}
-        onChange={onChange}
-        className="input"
-      >
-        {STORE_TAGS.map((tag) => (
-          <option key={tag} value={tag}>
-            {tag || "No Store"}
-          </option>
-        ))}
-      </select>
-		
-		
-		
-		
-		
-		
-		
+      {/* Prices */}
+      <div className="grid grid-cols-2 gap-2">
+        <input name="currentPrice" value={form.currentPrice} onChange={onChange} placeholder="Current Price" className="input" />
+        <input name="oldPrice" value={form.oldPrice} onChange={onChange} placeholder="Old Price" className="input" />
       </div>
 
-      {/* --------------------------
-           LINKS
-      -------------------------- */}
-      <input
-        name="imageLink"
-        value={form.imageLink}
-        onChange={onChange}
-        placeholder="Image Link"
-        className="input"
-      />
-
-      <input
-        name="productLink"
-        value={form.productLink}
-        onChange={onChange}
-        placeholder="Product Link"
-        className="input"
-      />
-
-     
-    
-	  
-	   <select
-        name="category"
-        value={form.category}
-        onChange={onChange}
-        className="input"
-      >
-        {CAT_TAGS.map((tag) => (
-          <option key={tag} value={tag}>
-            {tag || "No Category"}
-          </option>
-        ))}
-      </select>
-	  
-	  
-	  
-	  
-
-      {/* Holiday */}
-      <select
-        name="holidayTag"
-        value={form.holidayTag}
-        onChange={onChange}
-        className="input"
-      >
-        {HOLIDAY_TAGS.map((tag) => (
-          <option key={tag} value={tag}>
-            {tag || "No holiday / event"}
-          </option>
-        ))}
+      {/* Store / Category / Holiday */}
+      <select name="storeName" value={form.storeName} onChange={onChange} className="input">
+        {STORE_TAGS.map(t => <option key={t} value={t}>{t || "Select Store"}</option>)}
       </select>
 
- {/* --------------------------
-           AI SEO GENERATION
-      -------------------------- */}
-      <button
-        type="button"
-        onClick={generateAI}
-        disabled={fetchingAI}
-        className={`w-full p-2 rounded text-white ${
-          fetchingAI ? "bg-gray-400" : "bg-purple-600 hover:bg-purple-700"
-        }`}
-      >
-        {fetchingAI ? "Generating..." : "✨ AI: Generate EN + ES SEO"}
-      </button>
+      <select name="category" value={form.category} onChange={onChange} className="input">
+        {CAT_TAGS.map(t => <option key={t} value={t}>{t || "Select Category"}</option>)}
+      </select>
 
-      {/* --------------------------
-           SAVE BUTTON
-      -------------------------- */}
-      <button
-        type="submit"
-        disabled={saving}
-        className="w-full bg-blue-600 text-white p-2 rounded-md hover:bg-blue-700 transition"
-      >
+      <select name="holidayTag" value={form.holidayTag} onChange={onChange} className="input">
+        {HOLIDAY_TAGS.map(t => <option key={t} value={t}>{t || "No Holiday / Event"}</option>)}
+      </select>
+
+      {/* Links */}
+      <input name="imageLink" value={form.imageLink} onChange={onChange} placeholder="Image Link" className="input" />
+      <input name="productLink" value={form.productLink} onChange={onChange} placeholder="Product Link" className="input" />
+
+       {/* AI toggle */}
+      <label className="flex items-center gap-2 text-sm">
+        <input type="checkbox" checked={generateAI} onChange={e => setGenerateAI(e.target.checked)} />
+        Auto-generate AI content (EN + ES)
+      </label>
+
+      <button type="submit" disabled={saving} className="w-full bg-blue-600 text-white p-2 rounded">
         {saving ? "Saving..." : "Save Deal"}
       </button>
-       <input
-        name="reviewLink"
-        value={form.reviewLink}
-        onChange={onChange}
-        placeholder="Review Link"
-        className="input"
-      />
+      <input name="reviewLink" value={form.reviewLink} onChange={onChange} placeholder="Review Link" className="input" />
 
-      {/* --------------------------
-           MISC FIELDS
-      -------------------------- */}
-      <input
-        name="couponCode"
-        value={form.couponCode}
-        onChange={onChange}
-        placeholder="Coupon Code"
-        className="input"
-      />
+      {/* Misc */}
+      <input name="couponCode" value={form.couponCode} onChange={onChange} placeholder="Coupon Code" className="input" />
+      <input name="shippingCost" value={form.shippingCost} onChange={onChange} placeholder="Shipping Cost" className="input" />
+      <input name="expireDate" value={form.expireDate} onChange={onChange} placeholder="Expiry Date (YYYY-MM-DD)" className="input" />
 
-      <input
-        name="shippingCost"
-        value={form.shippingCost}
-        onChange={onChange}
-        placeholder="Shipping Cost"
-        className="input"
-      />
+      {/* ES */}
+      <input name="description_es" value={form.description_es} onChange={onChange} placeholder="Título en Español" className="input" />
+      <textarea name="notes_es" value={form.notes_es} onChange={onChange} placeholder="Descripción en Español" rows={3} className="input" />
 
-      <input
-        name="expireDate"
-        value={form.expireDate}
-        onChange={onChange}
-        placeholder="Deal Expiry Date"
-        className="input"
-      />
-
- {/* --------------------------
-           SPANISH TITLE + DESCRIPTION
-      -------------------------- */}
-      <input
-        name="description_es"
-        value={form.description_es}
-        onChange={onChange}
-        placeholder="Título en Español"
-        className="input"
-      />
-
-      <textarea
-        name="notes_es"
-        value={form.notes_es}
-        onChange={onChange}
-        placeholder="Descripción en Español"
-        className="input"
-        rows={3}
-      />
-
-
+     
     </form>
   );
 }
