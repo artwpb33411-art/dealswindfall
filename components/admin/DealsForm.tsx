@@ -5,6 +5,11 @@ import { useEffect, useState } from "react";
 /* -------------------------------------------------------------
    Constants
 ------------------------------------------------------------- */
+//const [error, setError] = useState<string | null>(null);
+
+//const [result, setResult] = useState<any | null>(null);
+//const [error, setError] = useState<string | null>(null);
+
 
 const STORE_TAGS = [
   "",
@@ -50,7 +55,10 @@ const DEFAULT_FORM = {
 ------------------------------------------------------------- */
 
 export default function DealsForm() {
-  const [form, setForm] = useState(DEFAULT_FORM);
+//const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null); 
+
+ const [form, setForm] = useState(DEFAULT_FORM);
   const [productUrl, setProductUrl] = useState("");
   const [saving, setSaving] = useState(false);
   const [fetching, setFetching] = useState(false);
@@ -127,33 +135,38 @@ export default function DealsForm() {
     setSaving(true);
     setMsg(null);
 
-    try {
-      const res = await fetch("/api/deals", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          ...form,
-          ai_requested: generateAI,
-        }),
-      });
+try {
+  const res = await fetch("/api/deals/ingest", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      ...form,
+      ai_requested: generateAI,
+    }),
+  });
 
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Failed to save deal");
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.message || "Failed to save deal");
 
-      setMsg("✅ Deal saved successfully!");
+  // Store full ingest result instead of generic message
+  setResult(data);
 
-      setForm(prev => ({
-        ...DEFAULT_FORM,
-        storeName: prev.storeName,
-        category: prev.category,
-        holidayTag: prev.holidayTag,
-      }));
-      setProductUrl("");
-    } catch (err: any) {
-      setMsg("❌ " + err.message);
-    } finally {
-      setSaving(false);
-    }
+  // Only reset form when a new deal row is created
+  if (data.result === "inserted" || data.result === "superseded_old") {
+    setForm(prev => ({
+      ...DEFAULT_FORM,
+      storeName: prev.storeName,
+      category: prev.category,
+      holidayTag: prev.holidayTag,
+    }));
+    setProductUrl("");
+  }
+} catch (err: any) {
+  setError(err.message || "Unexpected error");
+} finally {
+  setSaving(false);
+}
+
   };
 
   /* -------------------------------------------------------------
@@ -167,6 +180,7 @@ export default function DealsForm() {
 
       {/* Scrape */}
       <div className="flex gap-2">
+	  
         <input
           type="url"
           value={productUrl}
@@ -233,5 +247,7 @@ export default function DealsForm() {
 
      
     </form>
+	
+	
   );
 }

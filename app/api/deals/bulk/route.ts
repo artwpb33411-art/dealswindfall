@@ -1,48 +1,103 @@
 import { NextResponse } from "next/server";
-import { supabaseAdmin } from "@/lib/supabaseAdmin";
 
-function slugify(text: string) {
-  return text.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 120);
-}
-
-function getBaseUrl() {
-  return process.env.NEXT_PUBLIC_SITE_URL ||
-    (process.env.NEXT_PUBLIC_VERCEL_URL ? `https://${process.env.NEXT_PUBLIC_VERCEL_URL}` : "http://localhost:3000");
-}
+type BulkRowResult = {
+  index: number;
+  result: string;
+  message: string;
+  deal_id?: number;
+  existing_deal_id?: number;
+};
 
 export async function POST(req: Request) {
-  const { deals, useAI } = await req.json();
-  if (!Array.isArray(deals) || deals.length === 0) {
-    return NextResponse.json({ error: "No deals provided" }, { status: 400 });
-  }
+  try {
+    const { deals, useAI } = await req.json();
 
-  const rows = deals.map(d => ({
-    description: d.description,
-    notes: d.notes || "",
-    description_es: d.description_es || d.description,
-    notes_es: d.notes_es || d.notes || "",
-    store_name: d.store_name || null,
-    category: d.category || null,
-    current_price: d.current_price || null,
-    old_price: d.old_price || null,
-    slug: slugify(d.description),
-    ai_status: useAI ? "pending" : "skipped",
-    published_at: new Date().toISOString(),
-  }));
-
-  const { data, error } = await supabaseAdmin.from("deals").insert(rows).select();
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-
-  if (useAI) {
-    const base = getBaseUrl();
-    for (const deal of data) {
-      fetch(`${base}/api/ai/process-deal`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ dealId: deal.id }),
-      }).catch(console.error);
+    if (!Array.isArray(deals) || deals.length === 0) {
+      return NextResponse.json(
+        { error: "No deals provided" },
+        { status: 400 }
+      );
     }
-  }
 
-  return NextResponse.json({ ok: true, inserted: data.length });
+    const results: BulkRowResult[] = [];
+
+    let summary = {
+      total: deals.length,
+      inserted: 0,
+      bumped: 0,
+      superseded: 0,
+      skipped: 0,
+      errors: 0,
+    };
+
+    for (let i = 0; i < deals.length; i++) {
+      const row = deals[i];
+
+      try {
+        const res = await fetch(
+          `${process.env.NEXT_PUBLIC_SITE_URL}/api/deals/ingest`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              ...row,
+              ai_requested: useAI,
+            }),
+          }
+        );
+
+        const data = await res.json();
+
+        if (!res.ok) {
+          summary.errors++;
+          results.push({
+            index: i + 1,
+            result: "error",
+            message: data.message || "Failed",
+          });
+          continue;
+        }
+
+        switch (data.result) {
+          case "inserted":
+            summary.inserted++;
+            break;
+          case "bumped_existing":
+            summary.bumped++;
+            break;
+          case "superseded_old":
+            summary.superseded++;
+            break;
+          case "skipped_duplicate":
+            summary.skipped++;
+            break;
+        }
+
+        results.push({
+          index: i + 1,
+          result: data.result,
+          message: data.message,
+          deal_id: data.deal_id,
+          existing_deal_id: data.existing_deal_id,
+        });
+      } catch (err: any) {
+        summary.errors++;
+        results.push({
+          index: i + 1,
+          result: "error",
+          message: err.message || "Unexpected error",
+        });
+      }
+    }
+
+    return NextResponse.json({
+      summary,
+      rows: results,
+    });
+  } catch (err: any) {
+    return NextResponse.json(
+      { error: err.message || "Bulk ingest failed" },
+      { status: 500 }
+    );
+  }
 }
