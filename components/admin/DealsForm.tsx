@@ -64,7 +64,8 @@ export default function DealsForm() {
   const [fetching, setFetching] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
   const [generateAI, setGenerateAI] = useState(true);
-
+  
+ const [result, setResult] = useState<any | null>(null);
   /* -------------------------------------------------------------
      Restore last selections (client only)
   ------------------------------------------------------------- */
@@ -136,20 +137,45 @@ export default function DealsForm() {
     setMsg(null);
 
 try {
-  const res = await fetch("/api/deals/ingest", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      ...form,
-      ai_requested: generateAI,
-    }),
-  });
+ const res = await fetch("/api/deals/ingest", {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({
+    // TEXT
+    description: form.description || null,
+    notes: form.notes || null,
+    description_es: form.description_es || null,
+    notes_es: form.notes_es || null,
+
+    // PRICES
+    current_price: form.currentPrice ? Number(form.currentPrice) : null,
+    old_price: form.oldPrice ? Number(form.oldPrice) : null,
+
+    // LINKS
+    image_link: form.imageLink || null,
+    product_link: form.productLink || null,
+    review_link: form.reviewLink || null,
+
+    // META
+    coupon_code: form.couponCode || null,
+    shipping_cost: form.shippingCost || null,
+    expire_date: form.expireDate || null,
+
+    category: form.category || null,
+    store_name: form.storeName || null,
+    holiday_tag: form.holidayTag || null,
+
+    // FLAGS
+    ai_requested: generateAI,
+  }),
+});
+
 
   const data = await res.json();
   if (!res.ok) throw new Error(data.message || "Failed to save deal");
 
   // Store full ingest result instead of generic message
-  setResult(data);
+ // setResult(data);
 
   // Only reset form when a new deal row is created
   if (data.result === "inserted" || data.result === "superseded_old") {
