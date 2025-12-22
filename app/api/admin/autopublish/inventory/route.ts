@@ -4,12 +4,13 @@ import { supabaseAdmin } from "@/lib/supabaseAdmin";
 export async function GET() {
   try {
     /* ---------------------------------------------------------
-       1. Count remaining Draft deals
+       1. Count remaining Draft deals (exclude manually blocked)
     --------------------------------------------------------- */
     const { data: drafts, error: draftError } = await supabaseAdmin
       .from("deals")
       .select("id")
-      .eq("status", "Draft");
+      .eq("status", "Draft")
+      .eq("exclude_from_auto", true);
 
     if (draftError) throw draftError;
 
@@ -30,7 +31,6 @@ export async function GET() {
     /* ---------------------------------------------------------
        3. Compute How Long Deals Will Last
     --------------------------------------------------------- */
-
     if (!enabled) {
       return NextResponse.json({
         enabled: false,
@@ -42,7 +42,10 @@ export async function GET() {
       });
     }
 
-    const cyclesAvailable = remainingDrafts / deals_per_cycle;
+    const cyclesAvailable = deals_per_cycle
+      ? remainingDrafts / deals_per_cycle
+      : 0;
+
     const totalMinutes = cyclesAvailable * interval_minutes;
     const estimatedHours = totalMinutes / 60;
 
