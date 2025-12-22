@@ -10,7 +10,7 @@ export async function GET() {
       .from("deals")
       .select("id")
       .eq("status", "Draft")
-      .eq("exclude_from_auto", true);
+      .eq("exclude_from_auto", false);
 
     if (draftError) throw draftError;
 
