@@ -1,61 +1,38 @@
-export const dynamic = "force-dynamic";
-export const runtime = "nodejs";
-
-import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { NextResponse } from "next/server";
+
+export const runtime = "nodejs";
 
 export async function GET() {
   const baseUrl =
     process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, "") ||
     `https://${process.env.NEXT_PUBLIC_VERCEL_URL}`;
 
-  /* -------------------------------------------------------------
-      1. Get total count of published deals
-  ------------------------------------------------------------- */
-  const { count, error } = await supabaseAdmin
-    .from("deals")
-    .select("*", { count: "exact", head: true })
-    .eq("status", "Published");
+  const now = new Date().toISOString();
 
-  if (error) {
-    console.error("Deals count error:", error);
-  }
+  const staticPages = [
+    { path: "", priority: "1.0" },          // Home
+    { path: "/categories", priority: "0.8" },
+    { path: "/blog", priority: "0.7" },
+    { path: "/about", priority: "0.5" },
+    { path: "/contact", priority: "0.5" },
+  ];
 
-  const totalDeals = count || 0;
-  const pageSize = 1000; // deals per sitemap-deals page
-  const totalPages = Math.ceil(totalDeals / pageSize);
-
-  /* -------------------------------------------------------------
-      Build sitemap index
-  ------------------------------------------------------------- */
   let xml = `<?xml version="1.0" encoding="UTF-8"?>\n`;
-  xml += `<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n`;
+  xml += `<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n`;
 
-  // Deals sitemap pages
-  for (let i = 1; i <= totalPages; i++) {
+  for (const p of staticPages) {
     xml += `
-  <sitemap>
-    <loc>${baseUrl}/sitemap-deals/${i}.xml</loc>
-  </sitemap>`;
+  <url>
+    <loc>${baseUrl}${p.path}</loc>
+    <lastmod>${now}</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>${p.priority}</priority>
+  </url>`;
   }
 
-  // Blog sitemap
-  xml += `
-  <sitemap>
-    <loc>${baseUrl}/sitemap-blog.xml</loc>
-  </sitemap>`;
-
-  // Static sitemap
-  xml += `
-  <sitemap>
-    <loc>${baseUrl}/sitemap-static.xml</loc>
-  </sitemap>`;
-
-  xml += `\n</sitemapindex>`;
+  xml += `\n</urlset>`;
 
   return new NextResponse(xml, {
-    headers: {
-      "Content-Type": "application/xml",
-    },
+    headers: { "Content-Type": "application/xml" },
   });
 }

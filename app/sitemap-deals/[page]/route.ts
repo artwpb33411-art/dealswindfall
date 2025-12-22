@@ -9,12 +9,11 @@ export async function GET(
   context: { params: Promise<{ page: string }> }
 ) {
   const { page } = await context.params;
-  const pageNum = parseInt(page, 10);
+  const pageNum = Math.max(parseInt(page, 10) || 1, 1);
 
   const pageSize = 1000;
   const from = (pageNum - 1) * pageSize;
   const to = from + pageSize - 1;
-
 
   const baseUrl =
     process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, "") ||
@@ -24,8 +23,14 @@ export async function GET(
     .from("deals")
     .select("id, slug, slug_es, published_at, created_at")
     .eq("status", "Published")
-    .order("id")
+    .is("superseded_by_id", null)
+    .is("canonical_to_id", null)
+    .order("feed_at", { ascending: false, nullsFirst: false })
     .range(from, to);
+
+  if (error) {
+    return new NextResponse("<!-- sitemap error -->", { status: 500 });
+  }
 
   let xml = `<?xml version="1.0" encoding="UTF-8"?>\n`;
   xml += `<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n`;
@@ -37,6 +42,8 @@ export async function GET(
   <url>
     <loc>${baseUrl}/deals/${d.id}-${d.slug}</loc>
     <lastmod>${lastmod}</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.8</priority>
   </url>`;
 
     if (d.slug_es) {
@@ -44,6 +51,8 @@ export async function GET(
   <url>
     <loc>${baseUrl}/es/deals/${d.id}-${d.slug_es}</loc>
     <lastmod>${lastmod}</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.7</priority>
   </url>`;
     }
   }
