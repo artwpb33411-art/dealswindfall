@@ -300,10 +300,21 @@ const handleRegenerateAI = async () => {
       notes: data.description_en || prev.notes,
       description_es: data.title_es || prev.description_es,
       notes_es: data.description_es || prev.notes_es,
+
+       ai_status: "success",
+  ai_error: null,
+  ai_generated_at: new Date().toISOString(),
     }));
-  } catch {
-    alert("AI generation failed");
-  } finally {
+  } catch (err: any) {
+  setEditDeal((prev: any) => ({
+    ...prev,
+    ai_status: "error",
+    ai_error: err?.message || "AI generation failed",
+  }));
+
+  alert("AI generation failed");
+}
+ finally {
     setAiUpdating(false);
   }
 };
