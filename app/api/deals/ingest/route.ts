@@ -7,6 +7,10 @@ import { supabaseAdmin } from "@/lib/supabaseAdmin";
 /* -------------------------------------------------------------
    Helpers
 ------------------------------------------------------------- */
+function hoursSince(date?: string | null) {
+  if (!date) return Infinity;
+  return (Date.now() - new Date(date).getTime()) / 36e5;
+}
 
 function getBaseUrl() {
   return (
@@ -196,6 +200,20 @@ console.log("INGEST BODY >>>", body);
   .limit(1)
   .maybeSingle();
 
+  const rules = await getPublishingRules();
+
+const samePrice =
+  current_price !== null &&
+  existing?.current_price !== null &&
+  current_price === existing.current_price;
+
+const hoursOld = existing ? hoursSince(existing.feed_at) : Infinity;
+
+// 🔑 This is the key unification
+const reingestWindowHours = rules.bump_enabled
+  ? rules.bump_cooldown_hours
+  : 0;
+
 
     /* ---------------------------------------------------------
        CASE A — NEW DEAL
@@ -247,14 +265,10 @@ console.log("INGEST BODY >>>", body);
       });
     }
 
-    /* ---------------------------------------------------------
-   CASE B — PRICE CHANGED → SUPERSEDE
+   /* ---------------------------------------------------------
+   CASE B — REPLACE (price changed OR stale same price)
 --------------------------------------------------------- */
-if (
-  current_price !== null &&
-  existing.current_price !== null &&
-  current_price !== existing.current_price
-) {
+if (!samePrice || hoursOld >= reingestWindowHours) {
   const insertPayload = {
     description: body.description,
     notes: body.notes || null,
@@ -267,7 +281,9 @@ if (
     current_price,
     old_price,
 
-    image_link: body.image_link ? normalizeImageUrl(body.image_link) : null,
+    image_link: body.image_link
+      ? normalizeImageUrl(body.image_link)
+      : null,
 
     product_link: body.product_link!,
     product_link_norm,
@@ -285,10 +301,8 @@ if (
     status: "Draft",
     publish_action: "insert",
     canonical_to_id: existing.id,
-   // ingest_result: "superseded_old",
     ai_status: ai_requested ? "pending" : "skipped",
 
-    // affiliate/identity fields (optional but good)
     asin: body.asin || null,
     upc: body.upc || null,
     is_affiliate: body.is_affiliate || false,
@@ -298,59 +312,56 @@ if (
     feed_at: new Date().toISOString(),
   };
 
-  const { data: newDeal, error: insertError } = await supabaseAdmin
+  const { data: newDeal, error } = await supabaseAdmin
     .from("deals")
     .insert(insertPayload)
     .select()
     .single();
 
-  if (insertError || !newDeal) {
-    throw insertError || new Error("Failed to insert superseding deal");
-  }
+  if (error || !newDeal) throw error;
 
-  // Mark OLD as superseded + prevent auto-publish
-  const { error: updateError } = await supabaseAdmin
+  // ✅ ARCHIVE old deal (terminal state)
+  await supabaseAdmin
     .from("deals")
     .update({
+      status: "Archived",
       superseded_by_id: newDeal.id,
       superseded_at: new Date().toISOString(),
       exclude_from_auto: true,
-      status: "Draft",
     })
     .eq("id", existing.id);
-
-  if (updateError) throw updateError;
 
   await triggerAIIfNeeded("superseded_old", newDeal.id, ai_requested);
 
   return NextResponse.json({
     result: "superseded_old",
-    message: "Price changed — old deal superseded.",
+    message: samePrice
+      ? "Same price but stale deal replaced."
+      : "Price changed — old deal superseded.",
     old_deal_id: existing.id,
     new_deal_id: newDeal.id,
   });
 }
 
-    /* ---------------------------------------------------------
-       CASE C — SAME PRICE → BUMP
-    --------------------------------------------------------- */
-    const rules = await getPublishingRules();
+   /* ---------------------------------------------------------
+   CASE C — SAME PRICE + WITHIN COOLDOWN → BUMP
+--------------------------------------------------------- */
+if (samePrice && canBump(existing, rules)) {
+  await supabaseAdmin
+    .from("deals")
+    .update({
+      bump_count: (existing.bump_count ?? 0) + 1,
+      last_bumped_at: new Date().toISOString(),
+      feed_at: new Date().toISOString(),
+    })
+    .eq("id", existing.id);
 
-    if (canBump(existing, rules)) {
-      await supabaseAdmin
-        .from("deals")
-        .update({
-          bump_count: existing.bump_count + 1,
-          last_bumped_at: new Date().toISOString(),
-          feed_at: new Date().toISOString(),
-        })
-        .eq("id", existing.id);
+  return NextResponse.json({
+    result: "bumped_existing",
+    existing_deal_id: existing.id,
+  });
+}
 
-      return NextResponse.json({
-        result: "bumped_existing",
-        existing_deal_id: existing.id,
-      });
-    }
 
     /* ---------------------------------------------------------
        CASE D — SKIP

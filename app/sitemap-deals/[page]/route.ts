@@ -20,13 +20,13 @@ export async function GET(
     `https://${process.env.NEXT_PUBLIC_VERCEL_URL}`;
 
   const { data, error } = await supabaseAdmin
-    .from("deals")
-    .select("id, slug, slug_es, published_at, created_at")
-    .eq("status", "Published")
-    .is("superseded_by_id", null)
-    .is("canonical_to_id", null)
-    .order("feed_at", { ascending: false, nullsFirst: false })
-    .range(from, to);
+  .from("deals")
+  .select("id, slug, slug_es, feed_at, published_at, created_at")
+  .eq("status", "Published")
+  .is("superseded_by_id", null)
+  .is("canonical_to_id", null)
+  .order("feed_at", { ascending: false, nullsFirst: false })
+  .range(from, to);
 
   if (error) {
     return new NextResponse("<!-- sitemap error -->", { status: 500 });
@@ -36,7 +36,12 @@ export async function GET(
   xml += `<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n`;
 
   for (const d of data || []) {
-    const lastmod = d.published_at || d.created_at || new Date().toISOString();
+   const lastmod =
+  d.feed_at ||
+  d.published_at ||
+  d.created_at ||
+  new Date().toISOString();
+
 
     xml += `
   <url>
