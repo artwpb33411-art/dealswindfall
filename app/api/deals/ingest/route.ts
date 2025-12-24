@@ -203,9 +203,11 @@ console.log("INGEST BODY >>>", body);
   const rules = await getPublishingRules();
 
 const samePrice =
+  !!existing &&
   current_price !== null &&
-  existing?.current_price !== null &&
+  existing.current_price !== null &&
   current_price === existing.current_price;
+
 
 const hoursOld = existing ? hoursSince(existing.feed_at) : Infinity;
 
