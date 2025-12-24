@@ -268,7 +268,8 @@ const reingestWindowHours = rules.bump_enabled
    /* ---------------------------------------------------------
    CASE B — REPLACE (price changed OR stale same price)
 --------------------------------------------------------- */
-if (!samePrice || hoursOld >= reingestWindowHours) {
+if (existing && (!samePrice || hoursOld >= reingestWindowHours)) {
+
   const insertPayload = {
     description: body.description,
     notes: body.notes || null,

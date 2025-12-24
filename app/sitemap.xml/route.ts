@@ -1,38 +1,53 @@
-import { NextResponse } from "next/server";
-
+export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
+import { supabaseAdmin } from "@/lib/supabaseAdmin";
+import { NextResponse } from "next/server";
+
 export async function GET() {
- const baseUrl =
-  process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, "") ||
-  (process.env.NEXT_PUBLIC_VERCEL_URL
-    ? `https://${process.env.NEXT_PUBLIC_VERCEL_URL}`
-    : "http://localhost:3000");
+  const baseUrl =
+    process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, "") ||
+    (process.env.NEXT_PUBLIC_VERCEL_URL
+      ? `https://${process.env.NEXT_PUBLIC_VERCEL_URL}`
+      : "http://localhost:3000");
 
-  const now = new Date().toISOString();
+  // 1️⃣ Count published canonical deals
+  const { count, error } = await supabaseAdmin
+    .from("deals")
+    .select("*", { count: "exact", head: true })
+    .eq("status", "Published")
+    .is("superseded_by_id", null)
+    .is("canonical_to_id", null);
 
-  const staticPages = [
-    { path: "", priority: "1.0" },          // Home
-    { path: "/categories", priority: "0.8" },
-    { path: "/blog", priority: "0.7" },
-    { path: "/about", priority: "0.5" },
-    { path: "/contact", priority: "0.5" },
-  ];
-
-  let xml = `<?xml version="1.0" encoding="UTF-8"?>\n`;
-  xml += `<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n`;
-
-  for (const p of staticPages) {
-    xml += `
-  <url>
-    <loc>${baseUrl}${p.path}</loc>
-    <lastmod>${now}</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>${p.priority}</priority>
-  </url>`;
+  if (error) {
+    console.error("Sitemap count error:", error);
   }
 
-  xml += `\n</urlset>`;
+  const totalDeals = count || 0;
+  const pageSize = 1000;
+  const totalPages = Math.max(1, Math.ceil(totalDeals / pageSize));
+
+  let xml = `<?xml version="1.0" encoding="UTF-8"?>\n`;
+  xml += `<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n`;
+
+  // 2️⃣ Deal sitemap pages
+  for (let i = 1; i <= totalPages; i++) {
+    xml += `
+  <sitemap>
+    <loc>${baseUrl}/sitemap-deals/${i}.xml</loc>
+  </sitemap>`;
+  }
+
+  // 3️⃣ Static + blog sitemaps
+  xml += `
+  <sitemap>
+    <loc>${baseUrl}/sitemap-static.xml</loc>
+  </sitemap>
+  <sitemap>
+    <loc>${baseUrl}/sitemap-blog.xml</loc>
+  </sitemap>`;
+
+  xml += `\n</sitemapindex>`;
 
   return new NextResponse(xml, {
     headers: { "Content-Type": "application/xml" },

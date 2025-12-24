@@ -21,7 +21,8 @@ export async function GET(
 
   const { data, error } = await supabaseAdmin
   .from("deals")
-  .select("id, slug, slug_es, feed_at, published_at, created_at")
+  .select("id, slug, slug_es, published_at, created_at, feed_at")
+
   .eq("status", "Published")
   .is("superseded_by_id", null)
   .is("canonical_to_id", null)

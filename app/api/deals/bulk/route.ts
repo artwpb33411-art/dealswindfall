@@ -65,13 +65,27 @@ export async function POST(req: Request) {
       }
 
       try {
-    const ingestRes = await fetch(`${origin}/api/deals/ingest`, {
+   const ingestRes = await fetch(`${origin}/api/deals/ingest`, {
   method: "POST",
   headers: { "Content-Type": "application/json" },
   body: JSON.stringify(payload),
 });
 
-const ingestData = await ingestRes.json();
+let ingestData: any;
+const text = await ingestRes.text();
+
+try {
+  ingestData = JSON.parse(text);
+} catch {
+  summary.errors++;
+  results.push({
+    row: i + 1,
+    result: "error",
+    message: "Ingest crashed (non-JSON response)",
+  });
+  continue;
+}
+
 if (!ingestRes.ok) {
   summary.errors++;
   results.push({
@@ -81,6 +95,7 @@ if (!ingestRes.ok) {
   });
   continue;
 }
+
 
 switch (ingestData.result) {
   case "inserted":
