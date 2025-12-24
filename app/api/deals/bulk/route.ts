@@ -1,4 +1,6 @@
 import { NextResponse } from "next/server";
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
 
 type BulkRowResult = {
   row: number;
@@ -75,14 +77,15 @@ const ingestRes = await fetch(ingestUrl.toString(), {
 */
 
 
-const ingestRes = await fetch(
-  new URL("/api/deals/ingest", req.url),
-  {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload),
-  }
-);
+const ingestRes = await fetch(new URL("/api/deals/ingest", req.url), {
+  method: "POST",
+  headers: {
+    "Content-Type": "application/json",
+    cookie: req.headers.get("cookie") ?? "",
+    authorization: req.headers.get("authorization") ?? "",
+  },
+  body: JSON.stringify(payload),
+});
 
 
 let ingestData: any;
@@ -91,6 +94,9 @@ const text = await ingestRes.text();
 try {
   ingestData = JSON.parse(text);
 } catch {
+  console.error("INGEST returned non-JSON. status=", ingestRes.status);
+  console.error("INGEST non-JSON snippet:", text.slice(0, 300)); // 👈 important
+
   summary.errors++;
   results.push({
     row: i + 1,
@@ -99,6 +105,7 @@ try {
   });
   continue;
 }
+
 
 if (!ingestRes.ok) {
   summary.errors++;
