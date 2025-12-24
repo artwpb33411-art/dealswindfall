@@ -65,7 +65,8 @@ export async function POST(req: Request) {
       }
 
       try {
-   const ingestRes = await fetch(`${origin}/api/deals/ingest`, {
+   const ingestRes = await fetch("/api/deals/ingest", {
+
   method: "POST",
   headers: { "Content-Type": "application/json" },
   body: JSON.stringify(payload),
