@@ -65,12 +65,14 @@ export async function POST(req: Request) {
       }
 
       try {
-   const ingestRes = await fetch("/api/deals/ingest", {
+  const ingestUrl = new URL("/api/deals/ingest", req.url);
 
+const ingestRes = await fetch(ingestUrl.toString(), {
   method: "POST",
   headers: { "Content-Type": "application/json" },
   body: JSON.stringify(payload),
 });
+
 
 let ingestData: any;
 const text = await ingestRes.text();
