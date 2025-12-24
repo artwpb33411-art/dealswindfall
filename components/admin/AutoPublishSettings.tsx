@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 const DEAL_INTERVAL_OPTIONS = [
    { label: "Every 1 minutes", value: 1 },
   { label: "Every 2 minutes", value: 2 },
-  { label: "Every 5 minutes", value: 5 }
+  { label: "Every 5 minutes", value: 5 },
   { label: "Every 10 minutes", value: 10 },
   { label: "Every 15 minutes", value: 15 },
   { label: "Every 30 minutes", value: 30 },
