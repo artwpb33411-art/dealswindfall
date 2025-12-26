@@ -134,34 +134,36 @@ const ageLevel = publishedAt
         )}
 
         {/* Button */}
-        {deal.product_link && (
-  <a
-    href={deal.product_link}
-    target="_blank"
-    rel="noopener noreferrer"
-    onClick={() =>
-      trackEvent({
-        event_name: "deal_outbound_click",
-        event_type: "click",
-        page: window.location.pathname,
-        deal_id: deal.id,
-        store: deal.store_name,
-        category: deal.category,
-        device: navigator.userAgent,
-      })
-    }
-    className="inline-block w-full sm:w-auto text-center bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-md font-semibold shadow transition mb-6"
-  >
-    {viewDealText}
-  </a>
+{deal.product_link && (
+  <div className="mb-6">
+    <a
+      href={deal.product_link}
+      target="_blank"
+      rel="noopener noreferrer"
+      onClick={() =>
+        trackEvent({
+          event_name: "deal_outbound_click",
+          event_type: "click",
+          page: window.location.pathname,
+          deal_id: deal.id,
+          store: deal.store_name,
+          category: deal.category,
+          device: navigator.userAgent,
+        })
+      }
+      className="inline-block w-full sm:w-auto text-center bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-md font-semibold shadow transition"
+    >
+      {viewDealText}
+    </a>
 
-  
+    {deal.store_name && (
+      <p className="text-xs text-gray-500 mt-1">
+        You’ll be redirected to {deal.store_name} to complete your purchase
+      </p>
+    )}
+  </div>
 )}
-{deal.product_link && deal.store_name && (
-  <p className="text-xs text-gray-500 mt-1">
-    You’ll be redirected to {deal.store_name} to complete your purchase
-  </p>
-)}
+
 
         {/* Coupon Code */}
         {deal.coupon_code && (
@@ -211,20 +213,7 @@ const ageLevel = publishedAt
             </span>
           )}
         </div>
-
-        {/* Additional Info */}
-        <div className="text-sm text-gray-500 mb-8 space-y-1">
-          {deal.store_name && <p>Store: {deal.store_name}</p>}
-          {deal.category && <p>Category: {deal.category}</p>}
-          {deal.expire_date && (
-            <p>
-              {expiresOn}:{" "}
-              <span className="font-medium">
-                {new Date(deal.expire_date).toLocaleDateString()}
-              </span>
-            </p>
-          )}
-     {relativeTime && (
+  {relativeTime && (
   <p>
     {addedOn}:{" "}
     <span className="font-medium">{relativeTime}</span>
@@ -241,6 +230,19 @@ const ageLevel = publishedAt
     ⚠️ Older deal — availability may have changed
   </p>
 )}
+        {/* Additional Info */}
+        <div className="text-sm text-gray-500 mb-8 space-y-1">
+          {deal.store_name && <p>Store: {deal.store_name}</p>}
+          {deal.category && <p>Category: {deal.category}</p>}
+          {deal.expire_date && (
+            <p>
+              {expiresOn}:{" "}
+              <span className="font-medium">
+                {new Date(deal.expire_date).toLocaleDateString()}
+              </span>
+            </p>
+          )}
+   
         </div>
 
         {/* Notes */}
