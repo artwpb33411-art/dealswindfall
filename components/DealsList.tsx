@@ -1,4 +1,5 @@
 "use client";
+import { getRelativeTime } from "@/lib/ui/dealTime";
 
 import { useEffect, useState, useRef } from "react";
 import { createClient } from "@supabase/supabase-js";
@@ -316,6 +317,13 @@ if (!visitorId) {
               <p className="text-sm text-gray-500 truncate">
                 {deal.store_name}
               </p>
+
+              {deal.published_at && (
+  <p className="text-xs text-gray-400">
+    {getRelativeTime(deal.published_at)}
+  </p>
+)}
+
 
               <div className="text-sm text-gray-600 mt-1">
                 {deal.current_price && (
