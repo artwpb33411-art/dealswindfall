@@ -1,8 +1,10 @@
 //console.log("INGEST BODY >>>", body);
 
-
+import { normalizeText } from "@/lib/normalizeText";
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
+
+
 
 /* -------------------------------------------------------------
    Helpers
@@ -125,11 +127,15 @@ export async function POST(req: Request) {
     const raw = await req.json();
 
 const body = {
-  // text
-  description: raw.description,
-  notes: raw.notes,
-  description_es: raw.description_es,
-  notes_es: raw.notes_es,
+  // text (NORMALIZED)
+  description: normalizeText(raw.description),
+  notes: normalizeText(raw.notes),
+  description_es: normalizeText(raw.description_es),
+  notes_es: normalizeText(raw.notes_es),
+
+  category: normalizeText(raw.category),
+  store_name: normalizeText(raw.store_name ?? raw.storeName),
+  holiday_tag: normalizeText(raw.holiday_tag ?? raw.holidayTag),
 
   // prices
   current_price: raw.current_price ?? raw.currentPrice ?? null,
@@ -141,22 +147,17 @@ const body = {
   review_link: raw.review_link ?? raw.reviewLink ?? null,
 
   // meta
-  coupon_code: raw.coupon_code ?? raw.couponCode ?? null,
+  coupon_code: normalizeText(raw.coupon_code ?? raw.couponCode),
   shipping_cost: raw.shipping_cost ?? raw.shippingCost ?? null,
   expire_date: raw.expire_date ?? raw.expireDate ?? null,
-
-  category: raw.category,
-  store_name: raw.store_name ?? raw.storeName ?? null,
-  holiday_tag: raw.holiday_tag ?? raw.holidayTag ?? null,
 
   // identity / affiliate
   asin: raw.asin ?? null,
   upc: raw.upc ?? null,
   is_affiliate: raw.is_affiliate ?? false,
-  affiliate_source: raw.affiliate_source ?? null,
+  affiliate_source: normalizeText(raw.affiliate_source),
   affiliate_priority: raw.affiliate_priority ?? 0,
 
-  // flags
   ai_requested: raw.ai_requested ?? true,
 };
 

@@ -262,6 +262,13 @@ if (!visitorId) {
       ref={containerRef}
       className="flex flex-col divide-y divide-gray-200 overflow-y-auto h-full custom-scroll"
     >
+
+      <div className="px-3 py-2 text-xs text-gray-500 bg-gray-50 border-b">
+  {lang === "en"
+    ? "Showing latest deals — updated throughout the day"
+    : "Mostrando las últimas ofertas — actualizadas durante el día"}
+</div>
+
       {deals.map((deal) => {
         const title = lang === "en" ? deal.description : deal.description_es;
 

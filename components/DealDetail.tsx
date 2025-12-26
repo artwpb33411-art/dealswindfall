@@ -1,5 +1,10 @@
 "use client";
 import { trackEvent } from "@/lib/trackEvent";
+import {
+  getRelativeTime,
+  getAbsoluteLocalTime,
+  getDealAgeLevel,
+} from "@/lib/ui/dealTime";
 
 import { useState, useEffect } from "react";
 import Disclaimer from "@/components/Disclaimer";
@@ -72,6 +77,19 @@ export default function DealDetail({ deal }: { deal: any }) {
   const expiresOn = lang === "en" ? "Expires on" : "Expira el";
   const addedOn = lang === "en" ? "Added" : "Agregado";
   const otherDeals = lang === "en" ? "Other Related Deals" : "Otras Ofertas Relacionadas";
+const publishedAt = deal?.published_at ?? null;
+
+const relativeTime = publishedAt
+  ? getRelativeTime(publishedAt)
+  : null;
+
+const absoluteTime = publishedAt
+  ? getAbsoluteLocalTime(publishedAt)
+  : null;
+
+const ageLevel = publishedAt
+  ? getDealAgeLevel(publishedAt)
+  : null;
 
   /* ---------------------------------------------------------
      🔹 UI
@@ -136,6 +154,13 @@ export default function DealDetail({ deal }: { deal: any }) {
   >
     {viewDealText}
   </a>
+
+  
+)}
+{deal.product_link && deal.store_name && (
+  <p className="text-xs text-gray-500 mt-1">
+    You’ll be redirected to {deal.store_name} to complete your purchase
+  </p>
 )}
 
         {/* Coupon Code */}
@@ -199,14 +224,23 @@ export default function DealDetail({ deal }: { deal: any }) {
               </span>
             </p>
           )}
-          {deal.published_at && (
-            <p>
-              {addedOn}:{" "}
-              <span className="font-medium">
-                {new Date(deal.published_at).toLocaleDateString()}
-              </span>
-            </p>
-          )}
+     {relativeTime && (
+  <p>
+    {addedOn}:{" "}
+    <span className="font-medium">{relativeTime}</span>
+    {absoluteTime && (
+      <span className="ml-1 text-gray-400">({absoluteTime})</span>
+    )}
+  </p>
+
+ 
+
+)}
+ {ageLevel === "old" && (
+  <p className="text-yellow-600 text-sm">
+    ⚠️ Older deal — availability may have changed
+  </p>
+)}
         </div>
 
         {/* Notes */}

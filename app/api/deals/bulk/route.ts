@@ -1,3 +1,6 @@
+import { normalizeText } from "@/lib/normalizeText";
+
+
 import { NextResponse } from "next/server";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -43,17 +46,21 @@ export async function POST(req: Request) {
 
       // --- Normalize CSV/XLSX keys ---
       const payload = {
-        description: row.description || row.Description,
-        productLink:
-          row.productLink || row.product_link || row["Product Link"],
-        currentPrice: row.currentPrice || row.current_price,
-        oldPrice: row.oldPrice || row.old_price,
-        storeName: row.storeName || row.store_name,
-        category: row.category,
-        imageLink: row.imageLink || row.image_link,
-        holidayTag: row.holidayTag || row.holiday_tag,
-        ai_requested: useAI,
-      };
+  description: normalizeText(row.description || row.Description),
+  productLink:
+    row.productLink || row.product_link || row["Product Link"],
+
+  currentPrice: row.currentPrice || row.current_price,
+  oldPrice: row.oldPrice || row.old_price,
+
+  storeName: normalizeText(row.storeName || row.store_name),
+  category: normalizeText(row.category),
+  holidayTag: normalizeText(row.holidayTag || row.holiday_tag),
+
+  imageLink: row.imageLink || row.image_link,
+
+  ai_requested: useAI,
+};
 
       // --- Pre-validation ---
       if (!payload.description || !payload.productLink) {

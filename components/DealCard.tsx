@@ -2,6 +2,13 @@
 import { trackEvent } from "@/lib/trackEvent";
 
 import Image from "next/image";
+import {
+  getRelativeTime,
+  getAbsoluteLocalTime,
+  getDealAgeLevel,
+} from "@/lib/ui/dealTime";
+
+
 
 interface DealCardProps {
   title: string;
@@ -13,6 +20,7 @@ interface DealCardProps {
   link?: string;
   category?: string;
   level?: string;
+  published_at?: string; 
 }
 
 export default function DealCard({
@@ -25,10 +33,16 @@ export default function DealCard({
   link,
   category,
   level,
+  published_at,
 }: DealCardProps) {
   const discountText =
     discount && discount > 0 ? `-${discount.toFixed(0)}%` : null;
 
+
+
+
+
+    
   const formattedOld = oldPrice
     ? `$${oldPrice.toFixed(2)}`
     : oldPrice === 0
@@ -40,6 +54,20 @@ export default function DealCard({
     : newPrice === 0
     ? "$0.00"
     : "";
+
+const ageLevel = published_at
+  ? getDealAgeLevel(published_at)
+  : null;
+
+const relativeTime = published_at
+  ? getRelativeTime(published_at)
+  : null;
+
+const absoluteTime = published_at
+  ? getAbsoluteLocalTime(published_at)
+  : null;
+
+
 
   return (
     <div className="relative bg-white shadow-md rounded-lg overflow-hidden hover:shadow-lg transition duration-300 border border-gray-100">
@@ -88,6 +116,24 @@ export default function DealCard({
           <p className="text-xs text-gray-400 uppercase">{category}</p>
         )}
 
+        {/* Time info */}
+{relativeTime && (
+  <p className="text-xs text-gray-500">
+    🕒 {relativeTime}
+    {absoluteTime && (
+      <span className="ml-1 text-gray-400">({absoluteTime})</span>
+    )}
+  </p>
+)}
+
+{/* Soft availability warning */}
+{ageLevel === "old" && (
+  <p className="text-xs text-yellow-600">
+    ⚠️ Older deal — availability may have changed
+  </p>
+)}
+
+
         {/* Price info */}
         <div className="flex items-center gap-2 mt-1">
           {formattedNew && (
@@ -124,6 +170,41 @@ export default function DealCard({
             View Deal
           </a>
         )}
+
+        {link && (
+  <div className="mt-2">
+    <a
+      href={link}
+      target="_blank"
+      rel="noopener noreferrer"
+      onClick={() =>
+        trackEvent({
+          event_name: "deal_outbound_click",
+          event_type: "click",
+          page: window.location.pathname,
+          deal_id: link ? Number(link.split("/").pop()) : null,
+          store,
+          category,
+          device: navigator.userAgent,
+        })
+      }
+      className="w-full block text-center bg-blue-600 text-white text-sm py-2 rounded-md hover:bg-blue-700 transition"
+    >
+      View Deal
+    </a>
+
+    {/* Redirect clarity */}
+    <p className="text-xs text-gray-500 mt-1 text-center">
+      You’ll be redirected to {store || "the retailer"} to complete your purchase
+    </p>
+
+    {/* Disclaimer */}
+    <p className="text-[11px] text-gray-400 mt-1 text-center">
+      Price and availability may change at any time.
+    </p>
+  </div>
+)}
+
       </div>
     </div>
   );
