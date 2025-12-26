@@ -68,41 +68,41 @@ export default function DealsList({
      Build Supabase query
   ----------------------------------------------------------- */
   const buildQuery = () => {
-    let query = supabase
-      .from("deals")
-      .select("*")
-      .eq("status", "Published")
-      .order("published_at", { ascending: false });
+  let query = supabase
+    .from("deals")
+    .select("*")
+    .eq("status", "Published")
+    .order("display_order", { ascending: false });
 
-    if (selectedStore && selectedStore !== "Recent Deals") {
-      query = query.ilike("store_name", `%${selectedStore}%`);
-    }
+  if (selectedStore && selectedStore !== "Recent Deals") {
+    query = query.ilike("store_name", `%${selectedStore}%`);
+  }
 
-    if (selectedCategory) {
-      query = query.ilike("category", `%${selectedCategory}%`);
-    }
+  if (selectedCategory) {
+    query = query.ilike("category", `%${selectedCategory}%`);
+  }
 
-    if (selectedHoliday) {
-      query = query.eq(
-        "holiday_tag",
-        selectedHoliday
-          .replace(/-/g, " ")
-          .replace(/\b\w/g, (c: string) => c.toUpperCase())
-      );
-    }
+  if (selectedHoliday) {
+    query = query.eq(
+      "holiday_tag",
+      selectedHoliday
+        .replace(/-/g, " ")
+        .replace(/\b\w/g, (c: string) => c.toUpperCase())
+    );
+  }
 
-    if (showHotDeals) {
-      query = query.gte("percent_diff", 30);
-    }
+  if (showHotDeals) {
+    query = query.gte("percent_diff", 30);
+  }
 
-    if (debouncedSearch) {
-      query = query.or(
-        `description.ilike.%${debouncedSearch}%,description_es.ilike.%${debouncedSearch}%,store_name.ilike.%${debouncedSearch}%,category.ilike.%${debouncedSearch}%`
-      );
-    }
+  if (debouncedSearch) {
+    query = query.or(
+      `description.ilike.%${debouncedSearch}%,description_es.ilike.%${debouncedSearch}%,store_name.ilike.%${debouncedSearch}%,category.ilike.%${debouncedSearch}%`
+    );
+  }
 
-    return query;
-  };
+  return query;
+};
 
   /* -----------------------------------------------------------
      Initial load
