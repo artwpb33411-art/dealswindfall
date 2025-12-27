@@ -9,6 +9,43 @@ import { supabaseAdmin } from "@/lib/supabaseAdmin";
 /* -------------------------------------------------------------
    Helpers
 ------------------------------------------------------------- */
+
+function computeMetrics(
+  oldP: number | null,
+  currP: number | null
+): {
+  price_diff: number | null;
+  percent_diff: number | null;
+  deal_level: string | null;
+} {
+  if (
+    oldP === null ||
+    currP === null ||
+    oldP <= 0 ||
+    currP <= 0 ||
+    currP >= oldP
+  ) {
+    return {
+      price_diff: null,
+      percent_diff: null,
+      deal_level: null,
+    };
+  }
+
+  const price_diff = Number((oldP - currP).toFixed(2));
+  const percent_diff = Number(((price_diff / oldP) * 100).toFixed(2));
+
+  let deal_level: string | null = null;
+  if (percent_diff >= 40 && percent_diff < 51) deal_level = "Blistering deal";
+  else if (percent_diff >= 51 && percent_diff < 61) deal_level = "Scorching deal";
+  else if (percent_diff >= 61 && percent_diff < 71) deal_level = "Searing deal";
+  else if (percent_diff >= 71) deal_level = "Flaming deal";
+
+  return { price_diff, percent_diff, deal_level };
+}
+
+
+
 function hoursSince(date?: string | null) {
   if (!date) return Infinity;
   return (Date.now() - new Date(date).getTime()) / 36e5;
@@ -189,6 +226,8 @@ console.log("INGEST BODY >>>", body);
       body.current_price !== null ? Number(body.current_price) : null;
     const old_price =
       body.old_price !== null ? Number(body.old_price) : null;
+	  const metrics = computeMetrics(old_price, current_price);
+
 
     const product_link_norm = normalizeProductUrl(body.product_link);
     const product_key = buildProductKey(body.product_link);
@@ -239,6 +278,9 @@ const reingestWindowHours = rules.bump_enabled
 
           current_price,
           old_price,
+		   price_diff: metrics.price_diff,
+  percent_diff: metrics.percent_diff,
+  deal_level: metrics.deal_level,
 
           image_link: body.image_link || null,
           product_link: body.product_link,
@@ -288,6 +330,10 @@ if (existing && (!samePrice || hoursOld >= reingestWindowHours)) {
 
     current_price,
     old_price,
+	
+	 price_diff: metrics.price_diff,
+  percent_diff: metrics.percent_diff,
+  deal_level: metrics.deal_level,
 
     image_link: body.image_link
       ? normalizeImageUrl(body.image_link)
