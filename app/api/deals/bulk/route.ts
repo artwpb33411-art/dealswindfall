@@ -45,8 +45,19 @@ export async function POST(req: Request) {
       const row = deals[i];
 
       // --- Normalize CSV/XLSX keys ---
-      const payload = {
+     const payload = {
+  // title (strict)
   description: normalizeText(row.description || row.Description),
+
+  // ✅ notes (loose / raw)
+  notes: typeof row.notes === "string"
+    ? row.notes.trim()
+    : row.Notes ?? null,
+
+  notes_es: typeof row.notes_es === "string"
+    ? row.notes_es.trim()
+    : null,
+
   productLink:
     row.productLink || row.product_link || row["Product Link"],
 
@@ -61,6 +72,7 @@ export async function POST(req: Request) {
 
   ai_requested: useAI,
 };
+
 
       // --- Pre-validation ---
       if (!payload.description || !payload.productLink) {

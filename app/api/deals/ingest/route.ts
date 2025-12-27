@@ -129,9 +129,13 @@ export async function POST(req: Request) {
 const body = {
   // text (NORMALIZED)
   description: normalizeText(raw.description),
-  notes: normalizeText(raw.notes),
+//  notes: normalizeText(raw.notes),
   description_es: normalizeText(raw.description_es),
-  notes_es: normalizeText(raw.notes_es),
+ // notes_es: normalizeText(raw.notes_es),
+
+
+notes: typeof raw.notes === "string" ? raw.notes.trim() : null,
+notes_es: typeof raw.notes_es === "string" ? raw.notes_es.trim() : null,
 
   category: normalizeText(raw.category),
   store_name: normalizeText(raw.store_name ?? raw.storeName),
