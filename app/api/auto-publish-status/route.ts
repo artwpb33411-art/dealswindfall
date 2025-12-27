@@ -16,20 +16,20 @@ export async function GET() {
       { status: 500 }
     );
   }
-
-  return NextResponse.json({
-  // Deals Auto-Publish (correct names for UI)
-  deals_enabled: settings.enabled,
-  deals_last_run: state.last_run,
-  deals_next_run: state.next_run,
-  deals_last_count: state.last_count,
-
-  // Social Auto-Post (UI section uses these)
-  social_enabled: settings.social_enabled,
+return NextResponse.json({
+  // Social Auto-Post (PRIMARY — matches UI)
+  enabled: settings.social_enabled,
   social_last_run: state.social_last_run,
   social_next_run: state.social_next_run,
   social_last_count: state.social_last_count,
   social_last_deal: state.social_last_deal,
+
+  // Deals Auto-Publish (optional / future)
+  deals_enabled: settings.enabled,
+  deals_last_run: state.last_run,
+  deals_next_run: state.next_run,
+  deals_last_count: state.last_count,
 });
+
 
 }

@@ -205,7 +205,7 @@ export default function AutoPublishPanel() {
       <div className="p-6 bg-white rounded-lg shadow border">
         <h2 className="text-xl font-semibold text-blue-700 mb-4 flex items-center gap-2">
           <Zap className="w-5 h-5" />
-          Manual Actions
+          Manual Actions Social
         </h2>
 
         <div className="flex flex-wrap gap-4">
