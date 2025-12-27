@@ -54,8 +54,8 @@ export default function HomeClient() {
 
   // Scroll restoration for DealsList
   const dealsListRef = useRef<HTMLDivElement | null>(null);
-  const savedScroll = useRef(0);
-  const [shouldRestoreScroll, setShouldRestoreScroll] = useState(false);
+  //const savedScroll = useRef(0);
+  //const [shouldRestoreScroll, setShouldRestoreScroll] = useState(false);
 
   // ------------ Sync with URL (/?deal=ID) ------------
   useEffect(() => {
@@ -87,7 +87,7 @@ export default function HomeClient() {
   }, [searchParams]);
 
   // ------------ Restore scroll for mobile ------------
-  useEffect(() => {
+ /* useEffect(() => {
     if (!shouldRestoreScroll) return;
 
     requestAnimationFrame(() => {
@@ -99,7 +99,7 @@ export default function HomeClient() {
       });
     });
   }, [shouldRestoreScroll]);
-
+*/
   // ------------ Handlers ------------
   const goHome = () => {
     router.push("/", { scroll: false });
@@ -170,7 +170,7 @@ export default function HomeClient() {
     setStaticPage(null);
   };
 
-  const handleSelectDeal = (deal: any) => {
+ /* const handleSelectDeal = (deal: any) => {
     if (dealsListRef.current) {
       savedScroll.current = dealsListRef.current.scrollTop;
     }
@@ -184,10 +184,25 @@ export default function HomeClient() {
     setIsDealDetailOpen(false);
     setSelectedDeal(null);
     router.push("/", { scroll: false });
-    setShouldRestoreScroll(true);
+    //setShouldRestoreScroll(true);
   };
   
-  
+  */
+
+const handleSelectDeal = (deal: any) => {
+  setSelectedDeal(deal);
+  setIsDealDetailOpen(true);
+  router.push(`/?deal=${deal.id}`, { scroll: false });
+};
+
+const handleBackToDeals = () => {
+  setIsDealDetailOpen(false);
+  setSelectedDeal(null);
+  router.push("/", { scroll: false });
+};
+
+
+
   const { lang, hydrated, hydrate } = useLangStore();
 
 useEffect(() => {
@@ -275,19 +290,24 @@ if (!hydrated) return null;
           )}
 
           {/* Deals List */}
-          {!isDealDetailOpen && !isStoreListOpen && !staticPage && (
-            <div className="absolute inset-0 bg-white">
-              <DealsList
-                selectedStore={selectedStore}
-                selectedCategory={selectedCategory}
-                selectedHoliday={selectedHoliday}
-                searchQuery={debouncedSearch}
-                showHotDeals={showHotDeals}
-                onSelectDeal={handleSelectDeal}
-                scrollRef={dealsListRef}
-              />
-            </div>
-          )}
+         <div
+  className={`absolute inset-0 bg-white transition-opacity ${
+    isDealDetailOpen || isStoreListOpen || staticPage
+      ? "opacity-0 pointer-events-none"
+      : "opacity-100"
+  }`}
+>
+  <DealsList
+    selectedStore={selectedStore}
+    selectedCategory={selectedCategory}
+    selectedHoliday={selectedHoliday}
+    searchQuery={debouncedSearch}
+    showHotDeals={showHotDeals}
+    onSelectDeal={handleSelectDeal}
+    scrollRef={dealsListRef}
+  />
+</div>
+
 
           {/* Deal Detail */}
           {isDealDetailOpen && (
