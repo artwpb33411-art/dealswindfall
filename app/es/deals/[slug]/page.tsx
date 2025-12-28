@@ -14,10 +14,14 @@ function extractId(slug: string | undefined): number | null {
   const id = Number(idPart);
   return Number.isNaN(id) ? null : id;
 }
+function getCanonicalDealId(deal: any) {
+  return deal.superseded_by_id || deal.canonical_to_id || deal.id;
+}
 
 // ===============================
 //   SEO Metadata (Spanish)
 // ===============================
+/*
 export async function generateMetadata({ params }: any) {
   const { slug } = await params; // REQUIRED FIX
 
@@ -54,6 +58,57 @@ export async function generateMetadata({ params }: any) {
     },
   };
 }
+*/
+
+
+export async function generateMetadata({ params }: any) {
+  const { slug } = await params;
+
+  const id = extractId(slug);
+  if (!id) return notFound();
+
+  const { data: deal } = await supabase
+    .from("deals")
+    .select(
+      "id, slug, slug_es, notes, notes_es, description, description_es, superseded_by_id, canonical_to_id, image_link"
+    )
+    .eq("id", id)
+    .maybeSingle();
+
+  if (!deal) {
+    return {
+      title: "Oferta no encontrada",
+      description: "Esta oferta no existe.",
+    };
+  }
+
+  const canonicalId = getCanonicalDealId(deal);
+
+  const baseUrl =
+    process.env.NEXT_PUBLIC_SITE_URL ||
+    "http://localhost:3000";
+
+  return {
+    title: deal.description_es || deal.description,
+    description: deal.notes_es?.slice(0, 150) || deal.notes?.slice(0, 150),
+
+    alternates: {
+      canonical: `${baseUrl}/es/deals/${canonicalId}-${deal.slug_es}`,
+      languages: {
+        "en-US": `${baseUrl}/deals/${canonicalId}-${deal.slug}`,
+      },
+    },
+
+    openGraph: {
+      title: deal.description_es || deal.description,
+      description: deal.notes_es?.slice(0, 150) || deal.notes?.slice(0, 150),
+      images: deal.image_link ? [deal.image_link] : [],
+      url: `${baseUrl}/es/deals/${canonicalId}-${deal.slug_es}`,
+    },
+  };
+}
+
+
 
 // ===============================
 //  PAGE COMPONENT (Spanish)

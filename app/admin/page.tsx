@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 
+import PublishingRules from "@/components/admin/PublishingRules";
 
 import AutoPublishInventory from "@/components/admin/AutoPublishInventory";
 import DealsForm from "@/components/admin/DealsForm";
@@ -21,10 +22,11 @@ export default function AdminPage() {
 
   const tabs = [
     { id: "deals", label: "🔥 Deals" },
-    { id: "events", label: "📅 Seasonal Events" },
+   { id: "publishing", label: "📈 Publishing Rules" },
     { id: "analytics", label: "📊 Analytics" },
     { id: "autopublish", label: "🕒 Auto Publish" },
     { id: "settings", label: "⚙️ Settings" },
+	 { id: "events", label: "📅 Seasonal Events" },
     { id: "blog", label: "📝 Blog" },
   ];
 
@@ -104,8 +106,9 @@ export default function AdminPage() {
 
   {/* other tabs (events, settings, etc.) go here... */}
 
+{activeTab === "publishing" && <PublishingRules />}
 
-        {activeTab === "events" && <SeasonalEventsManager />}
+      
 
         {activeTab === "analytics" && <AdminAnalytics />}
 
@@ -117,7 +120,7 @@ export default function AdminPage() {
             <SchedulerStatusWidget />
           </div>
         )}
-
+  {activeTab === "events" && <SeasonalEventsManager />}
         {activeTab === "blog" && <BlogManager />}
 
       </div>

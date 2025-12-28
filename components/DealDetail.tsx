@@ -1,5 +1,10 @@
 "use client";
 import { trackEvent } from "@/lib/trackEvent";
+import {
+  getRelativeTime,
+  getAbsoluteLocalTime,
+  getDealAgeLevel,
+} from "@/lib/ui/dealTime";
 
 import { useState, useEffect } from "react";
 import Disclaimer from "@/components/Disclaimer";
@@ -72,6 +77,19 @@ export default function DealDetail({ deal }: { deal: any }) {
   const expiresOn = lang === "en" ? "Expires on" : "Expira el";
   const addedOn = lang === "en" ? "Added" : "Agregado";
   const otherDeals = lang === "en" ? "Other Related Deals" : "Otras Ofertas Relacionadas";
+const publishedAt = deal?.published_at ?? null;
+
+const relativeTime = publishedAt
+  ? getRelativeTime(publishedAt)
+  : null;
+
+const absoluteTime = publishedAt
+  ? getAbsoluteLocalTime(publishedAt)
+  : null;
+
+const ageLevel = publishedAt
+  ? getDealAgeLevel(publishedAt)
+  : null;
 
   /* ---------------------------------------------------------
      🔹 UI
@@ -100,7 +118,8 @@ export default function DealDetail({ deal }: { deal: any }) {
         )}
 
         {/* Title */}
-        <h1 className="text-2xl font-semibold text-gray-800 mb-3 leading-tight">
+       <h1 className="text-xl font-semibold text-slate-900 leading-snug mb-4">
+
           {title || "Untitled Deal"}
         </h1>
 
@@ -110,38 +129,55 @@ export default function DealDetail({ deal }: { deal: any }) {
             <img
               src={deal.image_link}
               alt={title}
-              className="max-h-80 object-contain rounded-lg shadow-sm border"
+            className="max-h-72 object-contain rounded-xl border bg-white"
+
             />
           </div>
         )}
 
         {/* Button */}
-        {deal.product_link && (
-  <a
-    href={deal.product_link}
-    target="_blank"
-    rel="noopener noreferrer"
-    onClick={() =>
-      trackEvent({
-        event_name: "deal_outbound_click",
-        event_type: "click",
-        page: window.location.pathname,
-        deal_id: deal.id,
-        store: deal.store_name,
-        category: deal.category,
-        device: navigator.userAgent,
-      })
-    }
-    className="inline-block w-full sm:w-auto text-center bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-md font-semibold shadow transition mb-6"
-  >
-    {viewDealText}
-  </a>
+{deal.product_link && (
+  <div className="mb-4 space-y-1">
+
+    <a
+      href={deal.product_link}
+      target="_blank"
+      rel="noopener noreferrer"
+      onClick={() =>
+        trackEvent({
+          event_name: "deal_outbound_click",
+          event_type: "click",
+          page: window.location.pathname,
+          deal_id: deal.id,
+          store: deal.store_name,
+          category: deal.category,
+          device: navigator.userAgent,
+        })
+      }
+className="w-full h-12 flex items-center justify-center bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-semibold shadow-sm transition active:scale-[0.98]"
+
+    >
+      {viewDealText}
+    </a>
+
+    {deal.store_name && (
+    <p className="text-xs text-slate-400 mt-1">
+
+        You’ll be redirected to {deal.store_name} to complete your purchase
+      </p>
+    )}
+  </div>
 )}
+
 
         {/* Coupon Code */}
         {deal.coupon_code && (
-          <div className="mb-6">
-            <p className="text-sm text-gray-500 mb-1">{couponLabel}</p>
+         <div className="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-xl">
+
+           <p className="text-sm text-amber-700 mb-2 font-medium">
+  {couponLabel}
+</p>
+
 
             <div className="flex items-stretch gap-2">
               <div className="inline-flex items-center px-4 py-2 bg-yellow-100 border border-yellow-400 rounded-md font-mono text-gray-800">
@@ -167,28 +203,47 @@ export default function DealDetail({ deal }: { deal: any }) {
         )}
 
         {/* Prices */}
-        <div className="flex flex-wrap items-center gap-4 mb-6">
-          {typeof deal.current_price === "number" && (
-            <span className="text-3xl font-bold text-green-600">
-              ${deal.current_price.toFixed(2)}
-            </span>
-          )}
+      <div className="flex items-baseline gap-3 mb-3 justify-center sm:justify-start">
 
-          {typeof deal.old_price === "number" && (
-            <span className="text-xl text-gray-400 line-through">
-              ${deal.old_price.toFixed(2)}
-            </span>
-          )}
+  {typeof deal.current_price === "number" && (
+    <span className="text-3xl font-bold text-green-600">
+      ${deal.current_price.toFixed(2)}
+    </span>
+  )}
 
-          {typeof deal.percent_diff === "number" && (
-            <span className="text-sm text-red-600 font-semibold">
-              -{deal.percent_diff.toFixed(0)}%
-            </span>
-          )}
-        </div>
+  {typeof deal.old_price === "number" && (
+    <span className="text-base line-through text-slate-400">
+      ${deal.old_price.toFixed(2)}
+    </span>
+  )}
+
+  {typeof deal.percent_diff === "number" && (
+    <span className="text-sm font-semibold text-red-600">
+      -{deal.percent_diff.toFixed(0)}%
+    </span>
+  )}
+</div>
+
+{relativeTime && (
+  <div className="text-sm text-slate-500 space-y-1 mb-4">
+    <p>
+      {addedOn}: <span className="font-medium">{relativeTime}</span>
+      {absoluteTime && (
+        <span className="ml-1 text-slate-400">({absoluteTime})</span>
+      )}
+    </p>
+
+    {ageLevel === "old" && (
+      <p className="text-amber-600">
+        ⚠️ Older deal — availability may have changed
+      </p>
+    )}
+  </div>
+)}
 
         {/* Additional Info */}
-        <div className="text-sm text-gray-500 mb-8 space-y-1">
+       <div className="text-sm text-slate-500 space-y-1 mb-6">
+
           {deal.store_name && <p>Store: {deal.store_name}</p>}
           {deal.category && <p>Category: {deal.category}</p>}
           {deal.expire_date && (
@@ -199,19 +254,13 @@ export default function DealDetail({ deal }: { deal: any }) {
               </span>
             </p>
           )}
-          {deal.published_at && (
-            <p>
-              {addedOn}:{" "}
-              <span className="font-medium">
-                {new Date(deal.published_at).toLocaleDateString()}
-              </span>
-            </p>
-          )}
+   
         </div>
 
         {/* Notes */}
         {notes && (
-          <div className="text-gray-700 mb-6 whitespace-pre-line">
+        <div className="text-sm leading-relaxed text-slate-700 mb-6 whitespace-pre-line">
+
             {notes.replace(/https?:\/\/[^\s]+/g, "").trim()}
           </div>
         )}

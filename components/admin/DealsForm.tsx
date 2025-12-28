@@ -5,6 +5,11 @@ import { useEffect, useState } from "react";
 /* -------------------------------------------------------------
    Constants
 ------------------------------------------------------------- */
+//const [error, setError] = useState<string | null>(null);
+
+//const [result, setResult] = useState<any | null>(null);
+//const [error, setError] = useState<string | null>(null);
+
 
 const STORE_TAGS = [
   "",
@@ -43,6 +48,11 @@ const DEFAULT_FORM = {
   expireDate: "",
   category: "",
   holidayTag: "",
+  asin: "",
+  upc: "",
+  is_affiliate: false,
+  affiliate_source: "",
+  affiliate_priority: 0,
 };
 
 /* -------------------------------------------------------------
@@ -50,13 +60,17 @@ const DEFAULT_FORM = {
 ------------------------------------------------------------- */
 
 export default function DealsForm() {
-  const [form, setForm] = useState(DEFAULT_FORM);
+//const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null); 
+
+ const [form, setForm] = useState(DEFAULT_FORM);
   const [productUrl, setProductUrl] = useState("");
   const [saving, setSaving] = useState(false);
   const [fetching, setFetching] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
   const [generateAI, setGenerateAI] = useState(true);
-
+  
+ const [result, setResult] = useState<any | null>(null);
   /* -------------------------------------------------------------
      Restore last selections (client only)
   ------------------------------------------------------------- */
@@ -123,25 +137,70 @@ export default function DealsForm() {
      Submit (AI runs async in backend)
   ------------------------------------------------------------- */
   const onSubmit = async (e: any) => {
-    e.preventDefault();
-    setSaving(true);
-    setMsg(null);
+  e.preventDefault();
+  setSaving(true);
+  setMsg(null);
+  setError(null);
 
-    try {
-      const res = await fetch("/api/deals", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          ...form,
-          ai_requested: generateAI,
-        }),
-      });
+  try {
+    const res = await fetch("/api/deals/ingest", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        // TEXT
+        description: form.description || null,
+        notes: form.notes || null,
+        description_es: form.description_es || null,
+        notes_es: form.notes_es || null,
 
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Failed to save deal");
+        // PRICES (camelCase)
+        currentPrice: form.currentPrice,
+        oldPrice: form.oldPrice,
 
-      setMsg("✅ Deal saved successfully!");
+        // LINKS
+        imageLink: form.imageLink,
+        productLink: form.productLink,
+        reviewLink: form.reviewLink,
 
+        // META
+        couponCode: form.couponCode,
+        shippingCost: form.shippingCost,
+        expireDate: form.expireDate,
+
+        category: form.category,
+        storeName: form.storeName,
+        holidayTag: form.holidayTag,
+
+        // FLAGS
+        ai_requested: generateAI,
+
+asin: form.asin || null,
+upc: form.upc || null,
+
+is_affiliate: form.is_affiliate,
+affiliate_source: form.affiliate_source || null,
+affiliate_priority: Number(form.affiliate_priority) || 0,
+
+
+      }),
+    });
+
+    const data = await res.json();
+
+if (!res.ok) {
+  setResult({ type: "error", message: data.message || "Failed to save deal" });
+  throw new Error(data.message || "Failed to save deal");
+}
+
+
+
+
+
+    // ✅ Store result for UI feedback
+    setResult(data);
+
+    // ✅ Reset only when a new deal was created
+    if (data.result === "inserted" || data.result === "superseded_old") {
       setForm(prev => ({
         ...DEFAULT_FORM,
         storeName: prev.storeName,
@@ -149,12 +208,13 @@ export default function DealsForm() {
         holidayTag: prev.holidayTag,
       }));
       setProductUrl("");
-    } catch (err: any) {
-      setMsg("❌ " + err.message);
-    } finally {
-      setSaving(false);
     }
-  };
+  } catch (err: any) {
+    setError(err.message || "Unexpected error");
+  } finally {
+    setSaving(false);
+  }
+};
 
   /* -------------------------------------------------------------
      Render
@@ -163,10 +223,36 @@ export default function DealsForm() {
   return (
     <form onSubmit={onSubmit} className="bg-white p-6 rounded shadow space-y-4 max-w-2xl">
       <h2 className="text-lg font-semibold text-blue-600">Add New Deal</h2>
+      {result && (
+  <div
+    className={`rounded p-3 text-sm font-medium ${
+      result.result === "inserted"
+        ? "bg-green-100 text-green-800"
+        : result.result === "bumped_existing"
+        ? "bg-blue-100 text-blue-800"
+        : result.result === "superseded_old"
+        ? "bg-purple-100 text-purple-800"
+        : result.result === "skipped_duplicate"
+        ? "bg-yellow-100 text-yellow-800"
+        : "bg-red-100 text-red-800"
+    }`}
+  >
+    {result.result === "inserted" && "✅ New deal created (Draft)."}
+    {result.result === "bumped_existing" &&
+      "🔁 Existing deal was bumped to the top."}
+    {result.result === "superseded_old" &&
+      "🔄 Price changed — old deal replaced with a new one."}
+    {result.result === "skipped_duplicate" &&
+      "⚠️ Duplicate deal detected — no action taken."}
+    {result.result === "error" && `❌ ${result.message}`}
+  </div>
+)}
+
       {msg && <div className="text-sm">{msg}</div>}
 
       {/* Scrape */}
       <div className="flex gap-2">
+	  
         <input
           type="url"
           value={productUrl}
@@ -220,6 +306,60 @@ export default function DealsForm() {
       <button type="submit" disabled={saving} className="w-full bg-blue-600 text-white p-2 rounded">
         {saving ? "Saving..." : "Save Deal"}
       </button>
+
+      <input
+  name="asin"
+  value={form.asin}
+  onChange={onChange}
+  placeholder="ASIN (Amazon)"
+  className="input"
+
+  
+/>
+
+<input
+  name="upc"
+  value={form.upc}
+  onChange={onChange}
+  placeholder="UPC / Barcode"
+  className="input"
+/>
+
+<label className="flex items-center gap-2 text-sm">
+  <input
+    type="checkbox"
+    checked={form.is_affiliate}
+    onChange={e =>
+      setForm(prev => ({ ...prev, is_affiliate: e.target.checked }))
+    }
+  />
+  Affiliate Deal
+</label>
+
+{form.is_affiliate && (
+  <>
+    <input
+      name="affiliate_source"
+      value={form.affiliate_source}
+      onChange={onChange}
+      placeholder="Affiliate Source (Amazon, CJ, Impact, etc.)"
+      className="input"
+    />
+
+    <select
+      name="affiliate_priority"
+      value={form.affiliate_priority}
+      onChange={onChange}
+      className="input"
+    >
+      <option value={0}>Normal</option>
+      <option value={1}>Affiliate</option>
+      <option value={2}>Strategic Partner</option>
+      <option value={3}>Sponsored / Premium</option>
+    </select>
+  </>
+)}
+
       <input name="reviewLink" value={form.reviewLink} onChange={onChange} placeholder="Review Link" className="input" />
 
       {/* Misc */}
@@ -233,5 +373,7 @@ export default function DealsForm() {
 
      
     </form>
+	
+	
   );
 }

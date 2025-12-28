@@ -1,4 +1,5 @@
 "use client";
+import { getRelativeTime } from "@/lib/ui/dealTime";
 
 import { useEffect, useState, useRef } from "react";
 import { createClient } from "@supabase/supabase-js";
@@ -68,41 +69,41 @@ export default function DealsList({
      Build Supabase query
   ----------------------------------------------------------- */
   const buildQuery = () => {
-    let query = supabase
-      .from("deals")
-      .select("*")
-      .eq("status", "Published")
-      .order("published_at", { ascending: false });
+  let query = supabase
+    .from("deals")
+    .select("*")
+    .eq("status", "Published")
+    .order("display_order", { ascending: false });
 
-    if (selectedStore && selectedStore !== "Recent Deals") {
-      query = query.ilike("store_name", `%${selectedStore}%`);
-    }
+  if (selectedStore && selectedStore !== "Recent Deals") {
+    query = query.ilike("store_name", `%${selectedStore}%`);
+  }
 
-    if (selectedCategory) {
-      query = query.ilike("category", `%${selectedCategory}%`);
-    }
+  if (selectedCategory) {
+    query = query.ilike("category", `%${selectedCategory}%`);
+  }
 
-    if (selectedHoliday) {
-      query = query.eq(
-        "holiday_tag",
-        selectedHoliday
-          .replace(/-/g, " ")
-          .replace(/\b\w/g, (c: string) => c.toUpperCase())
-      );
-    }
+  if (selectedHoliday) {
+    query = query.eq(
+      "holiday_tag",
+      selectedHoliday
+        .replace(/-/g, " ")
+        .replace(/\b\w/g, (c: string) => c.toUpperCase())
+    );
+  }
 
-    if (showHotDeals) {
-      query = query.gte("percent_diff", 30);
-    }
+  if (showHotDeals) {
+    query = query.gte("percent_diff", 30);
+  }
 
-    if (debouncedSearch) {
-      query = query.or(
-        `description.ilike.%${debouncedSearch}%,description_es.ilike.%${debouncedSearch}%,store_name.ilike.%${debouncedSearch}%,category.ilike.%${debouncedSearch}%`
-      );
-    }
+  if (debouncedSearch) {
+    query = query.or(
+      `description.ilike.%${debouncedSearch}%,description_es.ilike.%${debouncedSearch}%,store_name.ilike.%${debouncedSearch}%,category.ilike.%${debouncedSearch}%`
+    );
+  }
 
-    return query;
-  };
+  return query;
+};
 
   /* -----------------------------------------------------------
      Initial load
@@ -262,6 +263,13 @@ if (!visitorId) {
       ref={containerRef}
       className="flex flex-col divide-y divide-gray-200 overflow-y-auto h-full custom-scroll"
     >
+
+      <div className="px-3 py-2 text-xs text-gray-500 bg-gray-50 border-b">
+  {lang === "en"
+    ? "Showing latest deals — updated throughout the day"
+    : "Mostrando las últimas ofertas — actualizadas durante el día"}
+</div>
+
       {deals.map((deal) => {
         const title = lang === "en" ? deal.description : deal.description_es;
 
@@ -309,6 +317,13 @@ if (!visitorId) {
               <p className="text-sm text-gray-500 truncate">
                 {deal.store_name}
               </p>
+
+              {deal.published_at && (
+  <p className="text-xs text-gray-400">
+    {getRelativeTime(deal.published_at)}
+  </p>
+)}
+
 
               <div className="text-sm text-gray-600 mt-1">
                 {deal.current_price && (

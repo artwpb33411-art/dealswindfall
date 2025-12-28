@@ -9,31 +9,30 @@ import { NextResponse } from "next/server";
 export async function GET() {
   const baseUrl =
     process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, "") ||
-    `https://${process.env.NEXT_PUBLIC_VERCEL_URL}`;
+    (process.env.NEXT_PUBLIC_VERCEL_URL
+      ? `https://${process.env.NEXT_PUBLIC_VERCEL_URL}`
+      : "http://localhost:3000");
 
-  /* -------------------------------------------------------------
-      1. Get total count of published deals
-  ------------------------------------------------------------- */
+  // 1️⃣ Count published canonical deals
   const { count, error } = await supabaseAdmin
     .from("deals")
     .select("*", { count: "exact", head: true })
-    .eq("status", "Published");
+    .eq("status", "Published")
+    .is("superseded_by_id", null)
+    .is("canonical_to_id", null);
 
   if (error) {
-    console.error("Deals count error:", error);
+    console.error("Sitemap count error:", error);
   }
 
   const totalDeals = count || 0;
-  const pageSize = 1000; // deals per sitemap-deals page
-  const totalPages = Math.ceil(totalDeals / pageSize);
+  const pageSize = 1000;
+  const totalPages = Math.max(1, Math.ceil(totalDeals / pageSize));
 
-  /* -------------------------------------------------------------
-      Build sitemap index
-  ------------------------------------------------------------- */
   let xml = `<?xml version="1.0" encoding="UTF-8"?>\n`;
   xml += `<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n`;
 
-  // Deals sitemap pages
+  // 2️⃣ Deal sitemap pages
   for (let i = 1; i <= totalPages; i++) {
     xml += `
   <sitemap>
@@ -41,23 +40,18 @@ export async function GET() {
   </sitemap>`;
   }
 
-  // Blog sitemap
-  xml += `
-  <sitemap>
-    <loc>${baseUrl}/sitemap-blog.xml</loc>
-  </sitemap>`;
-
-  // Static sitemap
+  // 3️⃣ Static + blog sitemaps
   xml += `
   <sitemap>
     <loc>${baseUrl}/sitemap-static.xml</loc>
+  </sitemap>
+  <sitemap>
+    <loc>${baseUrl}/sitemap-blog.xml</loc>
   </sitemap>`;
 
   xml += `\n</sitemapindex>`;
 
   return new NextResponse(xml, {
-    headers: {
-      "Content-Type": "application/xml",
-    },
+    headers: { "Content-Type": "application/xml" },
   });
 }

@@ -3,6 +3,9 @@
 import { useEffect, useState } from "react";
 
 const DEAL_INTERVAL_OPTIONS = [
+   { label: "Every 1 minutes", value: 1 },
+  { label: "Every 2 minutes", value: 2 },
+  { label: "Every 5 minutes", value: 5 },
   { label: "Every 10 minutes", value: 10 },
   { label: "Every 15 minutes", value: 15 },
   { label: "Every 30 minutes", value: 30 },
@@ -138,21 +141,11 @@ export default function AutoPublishSettings() {
       </label>
 
       {/* DEALS PER CYCLE */}
-      <div className="mb-4">
-        <label className="block mb-1 font-medium">Deals Per Cycle</label>
-        <input
-          type="number"
-          min={1}
-          value={settings.deals_per_cycle}
-          onChange={(e) =>
-            setSettings({
-              ...settings,
-              deals_per_cycle: Number(e.target.value),
-            })
-          }
-          className="border rounded p-2 w-32"
-        />
-      </div>
+     <div className="mb-4 text-sm text-gray-600">
+  Auto-publish releases <strong>one deal per cycle</strong> to ensure
+  quality, diversity, and SEO stability.
+</div>
+
 
       {/* DEALS INTERVAL */}
       <div className="mb-6">

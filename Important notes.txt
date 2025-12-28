@@ -1,0 +1,280 @@
+1. if its Amazon deal also scrap ASIN and bar code and save it in asin and upc column, so that we can compare it for duplicate deal later
+
+We also created following columns for following reasons
+
+product key (text) → your normalized product identity (best)
+product_link_norm (text) → normalized URL (remove tracking params)
+image_key (text) → optional (hash of image url or image fingerprint if you do later)
+feed_at (timestamp) → used ONLY for sorting the deals list
+superseded_by_id (bigint) → points to the newer deal that replaces it
+superseded_at (timestamp) → when it was replaced
+canonical_to_id (bigint) → optional: for SEO canonical consolidation (old → new)
+bump_count (int), last_bumped_at (timestamp)
+is_affiliate boolean - Core affiliate flag (fast logic)
+affiliate_source text null - Affiliate source / network
+affiliate_priority smallint - Affiliate priority (future-proof) (0 → non-affiliate (normal), 1 → affiliate (normal), 2 → strategic partner, 3 → premium / sponsored )
+
+
+Now I would like to do some thing when new deal is entered either manually or by bulk method and have following outcome
+
+inserted - New deal created
+bumped_existing	- Existing deal resurfaced
+superseded_old - Old deal replaced by new one
+skipped_duplicate - Duplicate ignored (same price, already active)
+error - Validation or system error
+
+So we need work on following
+
+1. fix deal entering page,so that admin knows when happened to the given deal (inserted, bumped, superseded, error) also for bulk upload
+2. fix backend logic to carry out work flow accordingly
+3. fix sitemap code so that google can know what is going up with the deals and which one is source of truth
+
+
+ 
+
+BULK UPLOAD IS LEFT
+
+ALSO it says 1 deal at a time to maintain the integrity of function. So may be need to make changes to Admin page.
+
+BING console
+
+
+http://localhost:54321
+
+http://localhost:54323/project/default/sql/731e327b-54fe-4010-a580-1b2af249b31f?schema=public
+----------------------------
+
+
+CREATE TABLE deals_backup_2025_01 AS
+SELECT * FROM deals;
+
+---------------------------
+UPDATE deals
+SET product_key = 'amazon:' ||
+  UPPER(
+    SUBSTRING(product_link FROM '/dp/([A-Z0-9]{10})')
+  )
+WHERE
+  product_key IS NULL
+  AND product_link ILIKE '%amazon.com%'
+  AND product_link ~ '/dp/[A-Z0-9]{10}';
+
+------------------------------------
+UPDATE deals
+SET product_key =
+  'url:' ||
+  LOWER(
+    REGEXP_REPLACE(
+      SPLIT_PART(product_link, '?', 1),
+      '/$',
+      ''
+    )
+  )
+WHERE
+  product_key IS NULL
+  AND product_link IS NOT NULL;
+---------------------------
+
+
+UPDATE deals
+SET product_link_norm =
+  LOWER(
+    REGEXP_REPLACE(
+      SPLIT_PART(product_link, '?', 1),
+      '/$',
+      ''
+    )
+  )
+WHERE product_link_norm IS NULL
+  AND product_link IS NOT NULL;
+
+
+-------------------------------------
+
+test
+
+SELECT
+  COUNT(*) FILTER (WHERE product_key IS NOT NULL) AS with_keys,
+  COUNT(*) FILTER (WHERE product_key IS NULL) AS missing_keys
+FROM deals;
+
+-------------------------------------------
+Add later when moved
+
+
+ALTER TABLE deals
+ADD CONSTRAINT deals_product_key_required
+CHECK (product_key IS NOT NULL);
+
+------------------------------------------------------
+
+test for canonical
+
+SELECT id, slug
+FROM deals
+WHERE status = 'Published'
+  AND (slug IS NULL OR slug = '');
+-----------
+SELECT id, superseded_by_id, canonical_to_id
+FROM deals
+WHERE superseded_by_id IS NOT NULL
+  AND canonical_to_id IS NULL;
+--------------------
+SELECT d.id, d.canonical_to_id
+FROM deals d
+LEFT JOIN deals c ON c.id = d.canonical_to_id
+WHERE d.canonical_to_id IS NOT NULL
+  AND (c.id IS NULL OR c.status <> 'Published');
+---------------------
+
+SELECT product_key, COUNT(*) AS published_count
+FROM deals
+WHERE status = 'Published'
+GROUP BY product_key
+HAVING COUNT(*) > 1;
+
+233 - rows
+
+-----------------------
+
+
+SELECT id
+FROM deals
+WHERE canonical_to_id IS NULL
+  AND superseded_by_id IS NOT NULL
+  AND status = 'Published';
+----------------
+
+SELECT id
+FROM deals
+WHERE status = 'Published'
+  AND product_key IS NULL;
+---------------------
+
+SELECT id, feed_at
+FROM deals
+WHERE status = 'Published'
+  AND feed_at IS NULL;
+
+186 - rows
+
+
+-----------------
+SELECT
+  COUNT(*) FILTER (WHERE status = 'Published') AS published,
+  COUNT(*) FILTER (WHERE status = 'Published' AND slug IS NULL) AS missing_slug,
+  COUNT(*) FILTER (WHERE status = 'Published' AND product_key IS NULL) AS missing_key,
+  COUNT(*) FILTER (WHERE canonical_to_id IS NOT NULL) AS has_canonical_link,
+  COUNT(*) FILTER (WHERE superseded_by_id IS NOT NULL) AS superseded
+FROM deals;
+
+
+
+[
+  {
+    "published": 3446,
+    "missing_slug": 0,
+    "missing_key": 0,
+    "has_canonical_link": 0,
+    "superseded": 0
+  }
+]
+
+------------------------------------
+
+UPDATE deals
+SET feed_at = COALESCE(published_at, created_at)
+WHERE status = 'Published'
+  AND feed_at IS NULL;
+
+----------------------
+
+
+SELECT COUNT(*)
+FROM deals
+WHERE status = 'Published'
+  AND feed_at IS NULL;
+
+
+-----------------------------
+
+CREATE TEMP TABLE canonical_map AS
+SELECT DISTINCT ON (product_key)
+  product_key,
+  id AS canonical_id
+FROM deals
+WHERE status = 'Published'
+ORDER BY
+  product_key,
+  feed_at DESC,
+  published_at DESC,
+  created_at DESC;
+
+
+
+
+--------------------------
+WITH canonical_map AS (
+  SELECT DISTINCT ON (product_key)
+    product_key,
+    id AS canonical_id
+  FROM deals
+  WHERE status = 'Published'
+  ORDER BY
+    product_key,
+    feed_at DESC,
+    published_at DESC,
+    created_at DESC
+)
+UPDATE deals d
+SET
+  canonical_to_id = c.canonical_id,
+  superseded_by_id = c.canonical_id,
+  superseded_at = NOW(),
+  status = 'Draft'
+FROM canonical_map c
+WHERE
+  d.product_key = c.product_key
+  AND d.id <> c.canonical_id
+  AND d.status = 'Published';
+
+
+
+
+
+
+
+---------------------------
+
+This one is important
+
+CREATE UNIQUE INDEX IF NOT EXISTS one_published_per_product
+ON deals (product_key)
+WHERE status = 'Published'
+AND superseded_by_id IS NULL;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

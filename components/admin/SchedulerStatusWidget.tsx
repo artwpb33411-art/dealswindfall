@@ -62,13 +62,19 @@ setPlatforms(s2);
   async function action(type: string) {
     setMessage("");
 
-    if (type === "publish_deals") {
-      await fetch("/api/publish-random", {
-        method: "POST",
-        body: JSON.stringify({ count: 1 }),
-      });
-      setMessage("✅ Deals published now");
-    }
+   if (type === "publish_deals") {
+  const res = await fetch("/api/auto-publish-runner", {
+    method: "POST",
+  });
+
+  if (!res.ok) {
+    setMessage("❌ Failed to publish deals");
+    return;
+  }
+
+  setMessage("✅ auto_publish_runner executed");
+}
+
 
     if (type === "publish_social") {
       await fetch("/api/social/hourly", { method: "POST" });
@@ -153,7 +159,8 @@ setPlatforms(s2);
           onClick={() => action("publish_deals")}
           className="mt-3 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
         >
-          Publish Deals Now
+          Run Auto-Publish Now
+
         </button>
       </div>
 

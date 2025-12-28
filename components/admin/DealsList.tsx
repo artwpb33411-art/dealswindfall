@@ -6,12 +6,41 @@ import { HOLIDAY_TAGS } from "@/constants/holidays";
 /* -------------------------------------------------------------
    Helpers
 ------------------------------------------------------------- */
+function getCanonicalDealId(d: any) {
+  if (!d) return null;
+  if (typeof d !== "object") return null;
+  return d.superseded_by_id ?? d.id;
+}
+
+
+
+
+function renderStatusBadge(status: string) {
+  const map: Record<string, string> = {
+    Draft: "bg-gray-200 text-gray-700",
+    Published: "bg-green-200 text-green-800",
+    Archived: "bg-red-200 text-red-800",
+  };
+
+  return (
+    <span className={`px-2 py-1 text-xs rounded ${map[status] || ""}`}>
+      {status}
+    </span>
+  );
+}
 
 function formatDate(value?: string | null) {
   if (!value) return "—";
   const d = new Date(value);
   if (Number.isNaN(d.getTime())) return "—";
-  return d.toLocaleDateString();
+  return d.toLocaleString('en-US', {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: 'numeric',
+    hour12: true, // Use AM/PM
+  })
 }
 
 function formatMoney(value: number | string | null | undefined) {
@@ -142,29 +171,40 @@ export default function DealsList() {
     );
   };
 
-  function renderAIStatus(deal: any) {
-    if (!deal.ai_status || deal.ai_status === "skipped") return null;
-    if (deal.ai_status === "processing") return <span title="AI processing">🤖</span>;
-    if (deal.ai_status === "completed") return <span title="AI completed">✅</span>;
+function renderAIStatus(deal: any) {
+  const status = deal.ai_status;
 
-    if (deal.ai_status === "failed") {
-      return (
-        <button
-          onClick={() => retryAIForDeal(deal.id)}
-          title={deal.ai_error || "AI failed — click to retry"}
-          className="text-red-600 hover:text-red-800"
-        >
-          ⚠️
-        </button>
-      );
-    }
-    return null;
+  if (!status || status === "skipped") return <span>—</span>;
+
+  if (status === "pending" || status === "processing") {
+    return <span title="AI processing">🤖</span>;
   }
+
+  if (status === "completed" || status === "success") {
+    return <span title="AI completed">✅</span>;
+  }
+
+  if (status === "failed" || status === "error") {
+    return (
+      <button
+        onClick={() => retryAIForDeal(deal.id)}
+        title={deal.ai_error || "AI failed — click to retry"}
+        className="text-red-600 hover:text-red-800"
+      >
+        ⚠️
+      </button>
+    );
+  }
+
+  return <span>—</span>;
+}
+
+
 
   /* -------------------------------------------------------------
      Publish / Draft toggle
   ------------------------------------------------------------- */
-
+/*
   const toggleStatus = async (deal: any) => {
     const newStatus = deal.status === "Published" ? "Draft" : "Published";
 
@@ -184,6 +224,7 @@ export default function DealsList() {
       alert("Failed to update status");
     }
   };
+*/
 
   /* -------------------------------------------------------------
      Auto publish exclude toggle
@@ -243,28 +284,41 @@ export default function DealsList() {
   };
 
   const handleSave = async () => {
-    if (!editDeal) return;
-    setSaving(true);
+  if (!editDeal) return;
+  setSaving(true);
 
-    try {
-      const res = await fetch("/api/deals", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(editDeal),
-      });
+  try {
+    // 🔒 If admin edits after AI, lock it as manual
+    const payload = {
+      ...editDeal,
+      ai_status:
+        editDeal.ai_status === "completed"
+          ? "manual"
+          : editDeal.ai_status,
+    };
 
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Failed");
+    const res = await fetch("/api/deals", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
 
-      const updated = data.updated || editDeal;
-      setDeals(prev => prev.map(d => (d.id === updated.id ? updated : d)));
-      setIsModalOpen(false);
-    } catch (err: any) {
-      alert(err.message);
-    } finally {
-      setSaving(false);
-    }
-  };
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || "Failed");
+
+    const updated = data.updated || payload;
+    setDeals(prev =>
+      prev.map(d => (d.id === updated.id ? updated : d))
+    );
+
+    setIsModalOpen(false);
+  } catch (err: any) {
+    alert(err.message);
+  } finally {
+    setSaving(false);
+  }
+};
+
 
   /* -------------------------------------------------------------
      AI Regenerate (inside modal)
@@ -301,12 +355,21 @@ const handleRegenerateAI = async () => {
       description_es: data.title_es || prev.description_es,
       notes_es: data.description_es || prev.notes_es,
       ai_status: "success",
+
+    //   ai_status: "success",
   ai_error: null,
   ai_generated_at: new Date().toISOString(),
     }));
-  } catch {
-    alert("AI generation failed");
-  } finally {
+  } catch (err: any) {
+  setEditDeal((prev: any) => ({
+    ...prev,
+    ai_status: "error",
+    ai_error: err?.message || "AI generation failed",
+  }));
+
+  alert("AI generation failed");
+}
+ finally {
     setAiUpdating(false);
   }
 };
@@ -402,12 +465,7 @@ const handleRegenerateAI = async () => {
           Deals ({filteredDeals.length})
         </h2>
         <div className="flex gap-2">
-          <button
-            onClick={retryAllFailedAI}
-            className="px-3 py-1 text-sm bg-purple-600 text-white rounded"
-          >
-            🤖 Retry Failed AI
-          </button>
+        
           <button
             onClick={fetchDeals}
             className="px-3 py-1 text-sm bg-green-600 text-white rounded"
@@ -490,76 +548,102 @@ const handleRegenerateAI = async () => {
             <th className="p-2 text-right">Actions</th>
           </tr>
         </thead>
-        <tbody>
-          {paginatedDeals.map(d => (
-            <tr key={d.id} className="border-t hover:bg-gray-50">
-             <td className="p-2">
-  <div className="font-medium">{d.description}</div>
+       <tbody>
+  {paginatedDeals.map(d => {
+    const canonicalId = getCanonicalDealId(d);
 
-  {/* English URL */}
-  {d.id && d.slug && (
-    <a
-      href={`/deals/${d.id}-${d.slug}`}
-      target="_blank"
-      rel="noopener noreferrer"
-      className="block text-xs text-blue-600 hover:underline"
-    >
-      EN: /deals/{d.id}-{d.slug}
-    </a>
-  )}
+    return (
+      <tr key={d.id} className="border-t hover:bg-gray-50">
+        <td className="p-2">
+          <div className="font-medium">{d.description}</div>
 
-  {/* Spanish URL */}
-  {d.id && d.slug_es && (
-    <a
-      href={`/es/deals/${d.id}-${d.slug_es}`}
-      target="_blank"
-      rel="noopener noreferrer"
-      className="block text-xs text-green-600 hover:underline"
-    >
-      ES: /es/deals/{d.id}-{d.slug_es}
-    </a>
-  )}
-</td>
+          {/* English URL */}
+          {canonicalId && d.slug && (
+            <a
+              href={`/deals/${canonicalId}-${d.slug}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="block text-xs text-blue-600 hover:underline"
+            >
+              EN: /deals/{canonicalId}-{d.slug}
+            </a>
+          )}
 
+          {/* Spanish URL */}
+          {canonicalId && d.slug_es && (
+            <a
+              href={`/es/deals/${canonicalId}-${d.slug_es}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="block text-xs text-green-600 hover:underline"
+            >
+              ES: /es/deals/{canonicalId}-{d.slug_es}
+            </a>
+          )}
+
+          {d.superseded_by_id && (
+            <div className="text-xs text-gray-500">
+              Superseded → #{d.superseded_by_id}
+            </div>
+          )}
+
+          {d.is_affiliate && (
+            <span className="inline-block mt-1 px-2 py-0.5 text-xs bg-orange-500 text-white rounded">
+              Affiliate
+            </span>
+          )}
+
+          {d.feed_at && (
+            <div className="text-xs text-gray-400">
+              Feed: {formatDate(d.feed_at)}
+            </div>
+          )}
+
+          {d.canonical_to_id && (
+            <div className="text-xs text-blue-500">
+              Replaced older deal
+            </div>
+          )}
+        </td>
               <td className="p-2">{d.store_name || "—"}</td>
+              
               <td className="p-2">{d.category || "—"}</td>
               <td className="p-2 text-right">{formatMoney(d.current_price)}</td>
               <td className="p-2 text-center">{renderAIStatus(d)}</td>
+          <td className="p-2 text-center">
+  {renderStatusBadge(d.status)}
+</td>
+
+
               <td className="p-2 text-center">
-                <button
-                  onClick={() => toggleStatus(d)}
-                  className={`px-3 py-1 text-xs text-white rounded ${
-                    d.status === "Published"
-                      ? "bg-green-600"
-                      : "bg-gray-500"
-                  }`}
-                >
-                  {d.status || "Draft"}
-                </button>
+               <input
+  type="checkbox"
+  disabled={d.status === "Archived"}
+  checked={!!d.exclude_from_auto}
+  onChange={() => toggleExcludeAuto(d)}
+/>
+
               </td>
-              <td className="p-2 text-center">
-                <input
-                  type="checkbox"
-                  checked={!!d.exclude_from_auto}
-                  onChange={() => toggleExcludeAuto(d)}
-                />
-              </td>
-              <td className="p-2 text-right space-x-2">
-                <button
-                  onClick={() => handleEdit(d)}
-                  className="px-2 py-1 text-xs border rounded"
-                >
-                  Edit
-                </button>
-                <button
-                  onClick={() => handleDelete(d.id)}
-                  className="px-2 py-1 text-xs border text-red-600 rounded"
-                >
-                  Delete
-                </button>
-              </td>
+            <td className="p-2 text-right space-x-2">
+  {d.status !== "Archived" && (
+    <button
+      onClick={() => handleEdit(d)}
+      className="px-2 py-1 text-xs border rounded"
+    >
+      Edit
+    </button>
+  )}
+
+  <button
+    onClick={() => handleDelete(d.id)}
+    className="px-2 py-1 text-xs border text-red-600 rounded"
+  >
+    Delete
+  </button>
+</td>
+
             </tr>
-          ))}
+          );})}
         </tbody>
       </table>
 
@@ -732,32 +816,9 @@ const handleRegenerateAI = async () => {
           ))}
         </select>
 
-        {/* Status */}
-        <select
-          className="border p-2 rounded"
-          value={editDeal.status || "Draft"}
-          onChange={e =>
-            setEditDeal({ ...editDeal, status: e.target.value })
-          }
-        >
-          <option value="Draft">Draft</option>
-          <option value="Published">Published</option>
-        </select>
-
+       
         {/* Auto Publish */}
-        <label className="flex items-center gap-2 text-sm">
-          <input
-            type="checkbox"
-            checked={!!editDeal.exclude_from_auto}
-            onChange={() =>
-              setEditDeal({
-                ...editDeal,
-                exclude_from_auto: !editDeal.exclude_from_auto,
-              })
-            }
-          />
-          Exclude from Auto Publish
-        </label>
+       
       </div>
 
       {/* Footer */}

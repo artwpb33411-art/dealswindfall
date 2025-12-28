@@ -60,9 +60,23 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Deal not found" }, { status: 404 });
   }
 
-  if (deal.ai_status === "completed" && !force) {
-    return NextResponse.json({ ok: true });
-  }
+ if (deal.ai_status === "completed" && !force) {
+  return NextResponse.json({
+    ok: true,
+    skipped: true,
+    reason: "AI already completed",
+  });
+}
+
+if (deal.ai_status === "skipped" && !force) {
+  return NextResponse.json({
+    ok: true,
+    skipped: true,
+    reason: "AI intentionally skipped",
+  });
+}
+
+
 
   await supabaseAdmin
     .from("deals")
