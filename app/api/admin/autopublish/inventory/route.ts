@@ -4,17 +4,18 @@ import { supabaseAdmin } from "@/lib/supabaseAdmin";
 export async function GET() {
   try {
     /* ---------------------------------------------------------
-       1. Count remaining Draft deals (exclude manually blocked)
+       1. Count publishable Draft deals (matches runner exactly)
     --------------------------------------------------------- */
-    const { data: drafts, error: draftError } = await supabaseAdmin
+    const { count, error: draftError } = await supabaseAdmin
       .from("deals")
-      .select("id")
+      .select("id", { count: "exact", head: true })
       .eq("status", "Draft")
-      .eq("exclude_from_auto", false);
+      .eq("exclude_from_auto", false)
+      .is("superseded_by_id", null);
 
     if (draftError) throw draftError;
 
-    const remainingDrafts = drafts?.length || 0;
+    const remainingDrafts = count ?? 0;
 
     /* ---------------------------------------------------------
        2. Load Auto-Publish Settings
@@ -28,31 +29,29 @@ export async function GET() {
 
     const { interval_minutes, deals_per_cycle, enabled } = settings;
 
+    const effectiveDealsPerCycle = Math.max(1, deals_per_cycle ?? 1);
+
     /* ---------------------------------------------------------
-       3. Compute How Long Deals Will Last
+       3. Compute Inventory Duration
     --------------------------------------------------------- */
-    if (!enabled) {
+    if (!enabled || remainingDrafts === 0) {
       return NextResponse.json({
-        enabled: false,
+        enabled,
         remainingDrafts,
-        deals_per_cycle,
+        deals_per_cycle: effectiveDealsPerCycle,
         interval_minutes,
         estimated_hours: null,
-        message: "Auto-publishing is disabled.",
       });
     }
 
-    const cyclesAvailable = deals_per_cycle
-      ? remainingDrafts / deals_per_cycle
-      : 0;
-
+    const cyclesAvailable = remainingDrafts / effectiveDealsPerCycle;
     const totalMinutes = cyclesAvailable * interval_minutes;
     const estimatedHours = totalMinutes / 60;
 
     return NextResponse.json({
       enabled,
       remainingDrafts,
-      deals_per_cycle,
+      deals_per_cycle: effectiveDealsPerCycle,
       interval_minutes,
       estimated_hours: estimatedHours,
     });
