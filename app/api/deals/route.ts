@@ -81,7 +81,7 @@ export async function POST(req: Request) {
 
       status: "Draft",
       ai_status: ai_requested ? "pending" : "skipped",
-      published_at: new Date().toISOString(),
+      published_at: null,
     };
 
     const { data, error } = await supabaseAdmin
