@@ -1,0 +1,2 @@
+ALTER TABLE deals
+ALTER COLUMN published_at DROP DEFAULT;

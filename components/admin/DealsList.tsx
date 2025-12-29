@@ -74,8 +74,9 @@ export default function DealsList() {
   const [dateFilter, setDateFilter] = useState("");
 
   const [sortField, setSortField] = useState<
-    "published_at" | "percent_diff" | "current_price" | "store_name"
-  >("published_at");
+  "id" | "published_at" | "percent_diff" | "current_price" | "store_name"
+>("id");
+
 
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
 
@@ -518,6 +519,7 @@ const handleRegenerateAI = async () => {
           value={sortField}
           onChange={e => setSortField(e.target.value as any)}
         >
+          <option value="id">Newest (ID)</option>
           <option value="published_at">Date</option>
           <option value="percent_diff">Discount %</option>
           <option value="current_price">Current Price</option>
