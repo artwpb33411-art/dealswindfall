@@ -7,6 +7,7 @@ export default function ExportDeals() {
   const [start, setStart] = useState("");
   const [end, setEnd] = useState("");
   const [loading, setLoading] = useState(false);
+const [exportScope, setExportScope] = useState<"published" | "all">("published");
 
   const exportFile = async (type: "csv" | "xlsx") => {
     if (!start || !end) {
@@ -20,7 +21,12 @@ export default function ExportDeals() {
       const res = await fetch("/api/deals/export", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ startDate: start, endDate: end }),
+        body: JSON.stringify({
+  startDate: start,
+  endDate: end,
+  scope: exportScope,
+}),
+
       });
 
       const data = await res.json();
@@ -52,6 +58,7 @@ export default function ExportDeals() {
   };
 
   return (
+    
     <div className="p-4 bg-white rounded-md shadow border border-gray-300">
       <h2 className="text-lg font-semibold text-blue-600 mb-3">Export Deals</h2>
 
@@ -69,6 +76,27 @@ export default function ExportDeals() {
           onChange={(e) => setEnd(e.target.value)}
           className="border p-2 rounded"
         />
+<div className="flex gap-4 text-sm">
+  <label className="flex items-center gap-2">
+    <input
+      type="radio"
+      value="published"
+      checked={exportScope === "published"}
+      onChange={() => setExportScope("published")}
+    />
+    Published deals only
+  </label>
+
+  <label className="flex items-center gap-2">
+    <input
+      type="radio"
+      value="all"
+      checked={exportScope === "all"}
+      onChange={() => setExportScope("all")}
+    />
+    All deals
+  </label>
+</div>
 
         <button
           onClick={() => exportFile("xlsx")}

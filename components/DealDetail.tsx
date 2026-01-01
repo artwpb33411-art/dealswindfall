@@ -1,5 +1,7 @@
 "use client";
 import { trackEvent } from "@/lib/trackEvent";
+import TelegramCTA from "@/components/shared/TelegramCTA";
+import ShareDealButton from "@/components/shared/ShareDealButton";
 import {
   getRelativeTime,
   getAbsoluteLocalTime,
@@ -10,6 +12,8 @@ import { useState, useEffect } from "react";
 import Disclaimer from "@/components/Disclaimer";
 import { createClient } from "@supabase/supabase-js";
 import { useLangStore } from "@/lib/languageStore";
+
+
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -116,12 +120,18 @@ const ageLevel = publishedAt
             {deal.deal_level}
           </div>
         )}
+        
+<div className="flex items-start justify-between gap-3 mb-4">
+  <h1 className="text-xl font-bold text-slate-900 leading-snug flex-1">
+    {title || "Untitled Deal"}
+  </h1>
 
-        {/* Title */}
-       <h1 className="text-xl font-semibold text-slate-900 leading-snug mb-4">
+  <ShareDealButton
+  title={`${title} – $${deal.current_price}`}
+  url={`https://www.dealswindfall.com/deals/${deal.id}-${deal.slug}`}
+/>
 
-          {title || "Untitled Deal"}
-        </h1>
+</div>
 
         {/* Image */}
         {deal.image_link && (
@@ -168,7 +178,8 @@ className="w-full h-12 flex items-center justify-center bg-blue-600 hover:bg-blu
     )}
   </div>
 )}
-
+{/* ✅ TELEGRAM CTA GOES HERE */}
+<TelegramCTA />
 
         {/* Coupon Code */}
         {deal.coupon_code && (
