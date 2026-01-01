@@ -81,7 +81,7 @@ export async function POST(req: Request) {
 
       status: "Draft",
       ai_status: ai_requested ? "pending" : "skipped",
-      published_at: new Date().toISOString(),
+      published_at: null,
     };
 
     const { data, error } = await supabaseAdmin
@@ -117,7 +117,8 @@ export async function GET() {
   const { data, error } = await supabaseAdmin
     .from("deals")
     .select("*")
-    .order("published_at", { ascending: false });
+   .order("id", { ascending: false });
+
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
