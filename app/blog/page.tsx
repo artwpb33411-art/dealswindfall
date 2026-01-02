@@ -1,6 +1,7 @@
 // app/blog/page.tsx
 import { supabaseServer } from "@/lib/supabaseServer";
 import BlogListClient from "./BlogListClient";
+export const dynamic = "force-dynamic";
 
 export const revalidate = 60; // ISR, good for SEO
 

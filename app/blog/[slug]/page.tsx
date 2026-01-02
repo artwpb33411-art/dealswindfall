@@ -3,6 +3,7 @@ import { supabaseServer } from "@/lib/supabaseServer";
 import { notFound } from "next/navigation";
 import BlogPostClient from "./BlogPostClient";
 
+
 export default async function BlogPostPage(props: {
   params: Promise<{ slug: string }>;
 }) {
