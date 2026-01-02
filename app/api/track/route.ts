@@ -1,15 +1,30 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
+
 export async function POST(req: Request) {
   try {
+    // 1️⃣ Read body FIRST
     const body = await req.json();
-const {
-  event_name,
-  event_type,
-  page,
-  referrer,
-  device,        // ⭐ ADD THIS
-} = body;
+
+    // 2️⃣ THEN destructure
+    const {
+      event_name,
+      event_type,
+      page,
+      referrer,
+      user_agent,
+      utm_source,
+      utm_medium,
+      utm_campaign,
+      ip_address,
+    } = body;
+
+    if (!event_type) {
+      return NextResponse.json(
+        { error: "Missing event_type" },
+        { status: 400 }
+      );
+    }
 
     // ===============================
     // STEP 2: Store deal page views
@@ -25,8 +40,7 @@ const {
             deal_id: dealId,
             path: page,
             referrer: referrer || null,
-           user_agent: device || null,
-
+            user_agent: user_agent || null,
           });
 
         if (dealViewError) {
@@ -42,14 +56,13 @@ const {
       .from("analytics")
       .insert({
         event_type,
-        deal_id: body.deal_id || null,
         page: page || null,
         referrer: referrer || null,
-        utm_source: body.utm_source || null,
-        utm_medium: body.utm_medium || null,
-        utm_campaign: body.utm_campaign || null,
+        utm_source: utm_source || null,
+        utm_medium: utm_medium || null,
+        utm_campaign: utm_campaign || null,
         user_agent: user_agent || null,
-        ip_address: body.ip_address || null,
+        ip_address: ip_address || null,
         created_at: new Date().toISOString(),
       })
       .select()

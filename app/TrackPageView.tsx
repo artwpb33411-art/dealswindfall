@@ -10,23 +10,25 @@ export default function TrackPageView() {
   useEffect(() => {
     if (!pathname) return;
 
-    // 1️⃣ Global page view (keep for analytics)
+    const userAgent = navigator.userAgent;
+
+    // 1️⃣ Global page view
     trackEvent({
       event_name: "page_view",
       event_type: "view",
       page: pathname,
       referrer: document.referrer || null,
-      device: navigator.userAgent,
+      user_agent: userAgent, // ✅ standardized
     });
 
-    // 2️⃣ Deal-specific page view (NEW, honest signal)
+    // 2️⃣ Deal-specific page view
     if (pathname.includes("/deals/")) {
       trackEvent({
         event_name: "deal_page_view",
         event_type: "view",
         page: pathname,
-        deal_slug: pathname.split("/deals/")[1] || null,
         referrer: document.referrer || null,
+        user_agent: userAgent, // ✅ REQUIRED
       });
     }
 
