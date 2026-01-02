@@ -30,6 +30,9 @@ export async function POST(req: Request) {
     // STEP 2: Store deal page views
     // ===============================
     if (event_name === "deal_page_view" && page?.includes("/deals/")) {
+
+      console.log("DEAL PAGE VIEW HIT", { event_name, page });
+
       const slugPart = page.split("/deals/")[1];
       const dealId = Number(slugPart?.split("-")[0]);
 
