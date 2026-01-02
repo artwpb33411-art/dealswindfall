@@ -38,23 +38,30 @@ export default function DealDetail({ deal }: { deal: any }) {
      🔹 DEAL VIEW TRACKING (FIXED)
      Fires once per deal open (split pane or full page)
   --------------------------------------------------------- */
-  useEffect(() => {
-    if (!deal?.id) return;
-const sessionKey = `dw_deal_viewed_${deal.id}`;
+ useEffect(() => {
+  if (!deal?.id) return;
 
-  // 🚫 HARD STOP if already tracked in this session
+  const isSlug =
+    window.location.pathname.includes("/deals/");
+
+  const sessionKey = isSlug
+    ? `dw_deal_viewed_slug_${deal.id}`
+    : `dw_deal_viewed_internal_${deal.id}`;
+
   if (sessionStorage.getItem(sessionKey)) return;
 
   sessionStorage.setItem(sessionKey, "1");
-    trackEvent({
-      event_name: "deal_page_view",
-      event_type: "view",
-      deal_id: deal.id,
-      page: window.location.pathname + window.location.search,
-      referrer: document.referrer || null,
-      user_agent: navigator.userAgent,
-    });
-  }, [deal?.id]);
+
+  trackEvent({
+    event_name: "deal_page_view",
+    event_type: "view",
+    deal_id: deal.id,
+    page: window.location.pathname + window.location.search,
+    referrer: document.referrer || null,
+    user_agent: navigator.userAgent,
+  });
+}, [deal?.id]);
+
 
   /* ---------------------------------------------------------
      🔹 Load related links
