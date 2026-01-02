@@ -67,30 +67,39 @@ export async function POST(req: Request) {
       visitor_id,
     } = body;
 
-        // =========================================
-    // Deal Page Views (for "views in last hour")
+           // =========================================
+    // Deal Page Views (normalized: slug + ?deal)
     // =========================================
-    if (event_name === "deal_page_view" && page?.includes("/deals/")) {
-      // Works for both /deals/... and /es/deals/...
-      const slugPart = page.split("/deals/")[1];
-      const dealId = Number(slugPart?.split("-")[0]);
+    if (event_name === "deal_page_view") {
+      let resolvedDealId: number | null = null;
 
-      if (!Number.isNaN(dealId)) {
+      // 1️⃣ Preferred: explicit deal_id from client (?deal=ID)
+      if (typeof deal_id === "number" && !Number.isNaN(deal_id)) {
+        resolvedDealId = deal_id;
+      }
+
+      // 2️⃣ Fallback: parse from slug URL (/deals/ID-slug)
+      else if (page?.includes("/deals/")) {
+        const slugPart = page.split("/deals/")[1];
+        const parsed = Number(slugPart?.split("-")[0]);
+        if (!Number.isNaN(parsed)) {
+          resolvedDealId = parsed;
+        }
+      }
+
+      if (resolvedDealId !== null) {
         const { error: dealViewError } = await supabaseAdmin
           .from("deal_page_views")
           .insert({
-            deal_id: dealId,
-            path: page,
+            deal_id: resolvedDealId,
+            path: page ?? null,
             referrer: referrer ?? null,
-            user_agent: userAgent, // from request headers
+            user_agent: userAgent,
             created_at: new Date().toISOString(),
           });
 
         if (dealViewError) {
-          console.error(
-            "deal_page_views insert error:",
-            dealViewError
-          );
+          console.error("deal_page_views insert error:", dealViewError);
         }
       }
     }
