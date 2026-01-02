@@ -3,14 +3,13 @@ import { supabaseAdmin } from "@/lib/supabaseAdmin";
 export async function POST(req: Request) {
   try {
     const body = await req.json();
-
-    const {
-      event_name,
-      event_type,
-      page,
-      referrer,
-      user_agent,
-    } = body;
+const {
+  event_name,
+  event_type,
+  page,
+  referrer,
+  device,        // ⭐ ADD THIS
+} = body;
 
     // ===============================
     // STEP 2: Store deal page views
@@ -26,7 +25,8 @@ export async function POST(req: Request) {
             deal_id: dealId,
             path: page,
             referrer: referrer || null,
-            user_agent: user_agent || null,
+           user_agent: device || null,
+
           });
 
         if (dealViewError) {
