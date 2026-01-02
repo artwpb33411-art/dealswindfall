@@ -1,6 +1,7 @@
 import Image from "next/image";
 import { createClient } from "@supabase/supabase-js";
 import { notFound } from "next/navigation";
+import SpanishDealClient from "./SpanishDealClient";
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -128,6 +129,7 @@ export default async function SpanishDealPage({ params }: any) {
   if (!deal) return notFound();
 
   return (
+  <SpanishDealClient deal={deal}>
     <main className="mx-auto max-w-3xl p-4">
 
       {/* HEADER */}
@@ -171,7 +173,9 @@ export default async function SpanishDealPage({ params }: any) {
           </span>
         )}
         {deal.old_price && (
-          <span className="line-through text-gray-400">${deal.old_price}</span>
+          <span className="line-through text-gray-400">
+            ${deal.old_price}
+          </span>
         )}
         {deal.percent_diff && (
           <span className="text-sm text-red-600 font-bold">
@@ -194,11 +198,11 @@ export default async function SpanishDealPage({ params }: any) {
 
       {/* STORE */}
       <p className="text-gray-700 text-sm mb-10">
-        <br></br><br></br>
-		Tienda: <strong>{deal.store_name}</strong>
+        <br /><br />
+        Tienda: <strong>{deal.store_name}</strong>
       </p>
 
-      {/* SPANISH DESCRIPTION */}
+      {/* DESCRIPTION */}
       <p className="text-gray-800 leading-relaxed mb-8 whitespace-pre-line">
         {deal.notes_es || deal.notes}
       </p>
@@ -210,6 +214,9 @@ export default async function SpanishDealPage({ params }: any) {
       >
         View this deal in English →
       </a>
+
     </main>
-  );
+  </SpanishDealClient>
+);
+
 }
