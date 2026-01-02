@@ -3,8 +3,13 @@
 import { useEffect } from "react";
 import { useLangStore } from "@/lib/languageStore";
 import Image from "next/image";
+import { useDealViewTracker } from "@/lib/useDealViewTracker";
+
 
 export default function DealClient({ deal }: { deal: any }) {
+
+useDealViewTracker(deal?.id);
+
   const { lang, hydrated, hydrate } = useLangStore();
 
   useEffect(() => {
