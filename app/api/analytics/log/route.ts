@@ -67,6 +67,35 @@ export async function POST(req: Request) {
       visitor_id,
     } = body;
 
+        // =========================================
+    // Deal Page Views (for "views in last hour")
+    // =========================================
+    if (event_name === "deal_page_view" && page?.includes("/deals/")) {
+      // Works for both /deals/... and /es/deals/...
+      const slugPart = page.split("/deals/")[1];
+      const dealId = Number(slugPart?.split("-")[0]);
+
+      if (!Number.isNaN(dealId)) {
+        const { error: dealViewError } = await supabaseAdmin
+          .from("deal_page_views")
+          .insert({
+            deal_id: dealId,
+            path: page,
+            referrer: referrer ?? null,
+            user_agent: userAgent, // from request headers
+            created_at: new Date().toISOString(),
+          });
+
+        if (dealViewError) {
+          console.error(
+            "deal_page_views insert error:",
+            dealViewError
+          );
+        }
+      }
+    }
+
+
     const { error } = await supabaseAdmin.from("analytics").insert({
       event_name,
       event_type: event_type ?? inferEventType(event_name),
