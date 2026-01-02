@@ -119,7 +119,8 @@ useEffect(() => {
   const copyText = lang === "en" ? "Copy" : "Copiar";
   const expiresOn = lang === "en" ? "Expires on" : "Expira el";
   const addedOn = lang === "en" ? "Added" : "Agregado";
-
+const otherDeals =
+  lang === "en" ? "Other Related Deals" : "Otras Ofertas Relacionadas";
   const publishedAt = deal.published_at ?? null;
   const relativeTime = publishedAt ? getRelativeTime(publishedAt) : null;
   const absoluteTime = publishedAt
@@ -163,7 +164,11 @@ useEffect(() => {
           />
         </div>
 
-       
+        {viewsLastHour > 0 && (
+          <p className="text-xs text-orange-600 mb-4">
+            🔥 {viewsLastHour} people viewed this deal in the last hour
+          </p>
+        )}
 		
 		 {/* Image */}
         {deal.image_link && (
@@ -174,12 +179,6 @@ useEffect(() => {
               className="max-h-72 object-contain rounded-xl border bg-white"
             />
           </div>
-        )}
-
-         {viewsLastHour > 0 && (
-          <p className="text-xs text-orange-600 mb-4">
-            🔥 {viewsLastHour} people viewed this deal in the last hour
-          </p>
         )}
 
         {/* View Deal Button */}
