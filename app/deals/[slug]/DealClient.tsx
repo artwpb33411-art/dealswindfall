@@ -6,7 +6,13 @@ import Image from "next/image";
 import { useDealViewTracker } from "@/lib/useDealViewTracker";
 
 
-export default function DealClient({ deal }: { deal: any }) {
+export default function DealClient({
+  deal,
+  viewsLastHour,
+}: {
+  deal: any;
+  viewsLastHour: number;
+}) {
 
 useDealViewTracker(deal?.id);
 
@@ -43,6 +49,11 @@ useDealViewTracker(deal?.id);
           ← Back to DealsWindfall
         </a>
       </header>
+{viewsLastHour > 0 && (
+  <p className="text-sm text-orange-600 mt-2">
+    🔥 {viewsLastHour} people viewed this deal in the last hour
+  </p>
+)}
 
       {/* TITLE */}
       <h1 className="text-2xl font-bold mb-4 text-gray-900">{title}</h1>

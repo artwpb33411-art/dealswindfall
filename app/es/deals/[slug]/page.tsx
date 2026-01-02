@@ -129,7 +129,7 @@ export default async function SpanishDealPage({ params }: any) {
   if (!deal) return notFound();
 
   return (
-  <SpanishDealClient deal={deal}>
+  
     <main className="mx-auto max-w-3xl p-4">
 
       {/* HEADER */}
@@ -216,7 +216,7 @@ export default async function SpanishDealPage({ params }: any) {
       </a>
 
     </main>
-  </SpanishDealClient>
+
 );
 
 }

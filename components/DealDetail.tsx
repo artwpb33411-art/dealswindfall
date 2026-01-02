@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { trackEvent } from "@/lib/trackEvent";
 import TelegramCTA from "@/components/shared/TelegramCTA";
 import ShareDealButton from "@/components/shared/ShareDealButton";
@@ -21,29 +21,24 @@ const supabase = createClient(
 
 export default function DealDetail({ deal }: { deal: any }) {
   /* ---------------------------------------------------------
-     🔹 ALL HOOKS FIRST (React rules)
+     🔹 Hooks
   --------------------------------------------------------- */
   const { lang, hydrated, hydrate } = useLangStore();
   const [copied, setCopied] = useState(false);
   const [relatedLinks, setRelatedLinks] = useState<any[]>([]);
-
-  // ✅ Prevent duplicate deal view tracking
-  const lastTrackedDealId = useRef<number | null>(null);
+  const [viewsLastHour, setViewsLastHour] = useState<number>(0);
 
   useEffect(() => {
     hydrate();
   }, []);
 
   /* ---------------------------------------------------------
-     🔹 DEAL VIEW TRACKING (FIXED)
-     Fires once per deal open (split pane or full page)
+     🔹 Deal view tracking (deduped per session)
   --------------------------------------------------------- */
  useEffect(() => {
   if (!deal?.id) return;
 
-  const isSlug =
-    window.location.pathname.includes("/deals/");
-
+  const isSlug = window.location.pathname.includes("/deals/");
   const sessionKey = isSlug
     ? `dw_deal_viewed_slug_${deal.id}`
     : `dw_deal_viewed_internal_${deal.id}`;
@@ -62,29 +57,43 @@ export default function DealDetail({ deal }: { deal: any }) {
   });
 }, [deal?.id]);
 
+  //const [viewsLastHour, setViewsLastHour] = useState<number>(0);
 
+useEffect(() => {
+  if (!deal?.id) return;
+
+  const fetchViews = async () => {
+    try {
+      const res = await fetch(`/api/deals/${deal.id}/views-last-hour`);
+      const json = await res.json();
+      setViewsLastHour(json.count ?? 0);
+    } catch (e) {
+      console.error("Failed to load viewsLastHour", e);
+    }
+  };
+
+  fetchViews();
+}, [deal?.id]);
+
+
+  /* ---------------------------------------------------------
+     🔹 Fetch views in last hour (client-safe)
+  --------------------------------------------------------- */
+ 
   /* ---------------------------------------------------------
      🔹 Load related links
   --------------------------------------------------------- */
   useEffect(() => {
-    const fetchRelated = async () => {
-      if (!deal?.id) {
-        setRelatedLinks([]);
-        return;
-      }
+    if (!deal?.id) return;
 
-      const { data, error } = await supabase
-        .from("deal_related_links")
-        .select("id, url, title")
-        .eq("deal_id", deal.id)
-        .order("id", { ascending: true });
-
-      if (!error && data) {
-        setRelatedLinks(data);
-      }
-    };
-
-    fetchRelated();
+    supabase
+      .from("deal_related_links")
+      .select("id, url, title")
+      .eq("deal_id", deal.id)
+      .order("id", { ascending: true })
+      .then(({ data }) => {
+        setRelatedLinks(data ?? []);
+      });
   }, [deal?.id]);
 
   if (!hydrated) return null;
@@ -110,8 +119,6 @@ export default function DealDetail({ deal }: { deal: any }) {
   const copyText = lang === "en" ? "Copy" : "Copiar";
   const expiresOn = lang === "en" ? "Expires on" : "Expira el";
   const addedOn = lang === "en" ? "Added" : "Agregado";
-  const otherDeals =
-    lang === "en" ? "Other Related Deals" : "Otras Ofertas Relacionadas";
 
   const publishedAt = deal.published_at ?? null;
   const relativeTime = publishedAt ? getRelativeTime(publishedAt) : null;
@@ -126,8 +133,7 @@ export default function DealDetail({ deal }: { deal: any }) {
   return (
     <div className="flex flex-col min-h-0 overflow-hidden bg-white">
       <div className="overflow-y-auto flex-1 p-6 pb-28 custom-scroll">
-
-         {/* Heat level */}
+  {/* Heat level */}
         {deal.deal_level && (
           <div
             className={`self-start mb-4 px-3 py-1 rounded-full text-white text-sm font-medium ${
@@ -145,7 +151,8 @@ export default function DealDetail({ deal }: { deal: any }) {
             {deal.deal_level}
           </div>
         )}
-        <div className="flex items-start justify-between gap-3 mb-4">
+
+        <div className="flex items-start justify-between gap-3 mb-1">
           <h1 className="text-xl font-bold text-slate-900 flex-1">
             {title || "Untitled Deal"}
           </h1>
@@ -156,7 +163,9 @@ export default function DealDetail({ deal }: { deal: any }) {
           />
         </div>
 
-        {/* Image */}
+       
+		
+		 {/* Image */}
         {deal.image_link && (
           <div className="flex justify-center mb-5">
             <img
@@ -165,6 +174,12 @@ export default function DealDetail({ deal }: { deal: any }) {
               className="max-h-72 object-contain rounded-xl border bg-white"
             />
           </div>
+        )}
+
+         {viewsLastHour > 0 && (
+          <p className="text-xs text-orange-600 mb-4">
+            🔥 {viewsLastHour} people viewed this deal in the last hour
+          </p>
         )}
 
         {/* View Deal Button */}
@@ -198,9 +213,11 @@ export default function DealDetail({ deal }: { deal: any }) {
           </div>
         )}
 
-        <TelegramCTA />
 
-        {/* Coupon */}
+
+        {/* rest of your UI stays unchanged */}
+        <TelegramCTA />
+		  {/* Coupon */}
         {deal.coupon_code && (
           <div className="mb-4 p-3 bg-amber-50 border rounded-xl">
             <p className="text-sm font-medium mb-2">{couponLabel}</p>
