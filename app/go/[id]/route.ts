@@ -58,6 +58,13 @@ export async function GET(
       302
     );
   }
+const url = new URL(req.url);
+const force = url.searchParams.has("force");
+
+// If user explicitly confirmed → go to Amazon no matter what
+if (force) {
+  return NextResponse.redirect(data.product_link, 302);
+}
 
   // ✅ Normal browsers → direct merchant redirect
   return NextResponse.redirect(data.product_link, 302);

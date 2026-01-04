@@ -1,5 +1,4 @@
 "use client";
-
 import Link from "next/link";
 
 export default function OpenDealPage({
@@ -15,8 +14,8 @@ export default function OpenDealPage({
         </h1>
 
         <p className="text-sm text-gray-500">
-          For best experience, please open this deal in your
-          browser.
+          Some social apps use built-in browsers that may not load store
+          pages correctly. For the best experience, continue in your browser.
         </p>
 
         <Link
