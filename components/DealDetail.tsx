@@ -209,7 +209,7 @@ const hasValidDiscount =
           <div className="mb-4 space-y-1 max-w-xl mx-auto">
 
           <a
-  href={`/go/${deal.id}`}
+  href={deal.product_link}
   target="_blank"
   rel="noopener noreferrer"
   onClick={() =>
@@ -227,6 +227,7 @@ const hasValidDiscount =
 >
   {viewDealText}
 </a>
+
 
 
 

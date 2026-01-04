@@ -1,3 +1,7 @@
+// TODO: Revisit /go redirect handling for social in-app browsers
+// after analytics data is available.
+
+
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 
