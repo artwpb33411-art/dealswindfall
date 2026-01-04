@@ -48,24 +48,25 @@ export async function GET(
     return NextResponse.redirect(baseUrl, 302);
   }
 
+  const url = new URL(req.url);
+  const force = url.searchParams.has("force");
+
+  // ✅ 1️⃣ USER CONFIRMED → ALWAYS GO TO STORE
+  if (force) {
+    return NextResponse.redirect(data.product_link, 302);
+  }
+
   const ua = req.headers.get("user-agent") || "";
   const inApp = isInAppBrowser(ua);
 
-  // 🔑 Redirect social/in-app browsers to confirmation page
+  // ✅ 2️⃣ IN-APP BROWSER → SHOW CONFIRMATION PAGE
   if (inApp) {
     return NextResponse.redirect(
       `${baseUrl}/go/${dealId}/open`,
       302
     );
   }
-const url = new URL(req.url);
-const force = url.searchParams.has("force");
 
-// If user explicitly confirmed → go to Amazon no matter what
-if (force) {
-  return NextResponse.redirect(data.product_link, 302);
-}
-
-  // ✅ Normal browsers → direct merchant redirect
+  // ✅ 3️⃣ NORMAL BROWSER → DIRECT STORE REDIRECT
   return NextResponse.redirect(data.product_link, 302);
 }
