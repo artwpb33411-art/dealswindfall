@@ -1,89 +1,91 @@
 "use client";
+import { STORE_ICONS } from "@/lib/storeIcons";
 
 import { useEffect, useState } from "react";
 import { trackEvent } from "@/lib/trackEvent";
+
 import TelegramCTA from "@/components/shared/TelegramCTA";
 import ShareDealButton from "@/components/shared/ShareDealButton";
 import Disclaimer from "@/components/Disclaimer";
+
+import SaveDealButton from "@/components/SaveDealButton";
 import {
   getRelativeTime,
   getAbsoluteLocalTime,
   getDealAgeLevel,
 } from "@/lib/ui/dealTime";
-
-import { createClient } from "@supabase/supabase-js";
 import { useLangStore } from "@/lib/languageStore";
 
+/* ---------------------------------------------------------
+   🔹 Types (UI Contract)
+--------------------------------------------------------- */
+
+interface DealDetailProps {
+  deal: {
+    id: number;
+    slug?: string;
+
+    description?: string;
+    description_es?: string;
+    notes?: string;
+    notes_es?: string;
+
+    current_price?: number | null;
+    old_price?: number | null;
+    percent_diff?: number | null;
+
+    product_link?: string | null;
+    image_link?: string | null;
+
+    store_name?: string | null;
+    category?: string | null;
+
+    coupon_code?: string | null;
+
+    published_at?: string | null;
+    expire_date?: string | null;
+
+    deal_level?: string | null;
+  };
+
+  /** Optional, display-only */
+  viewsLastHour?: number;
+
+  /** Optional, display-only (future-proof) */
+  relatedLinks?: {
+    id: number;
+    url: string;
+    title?: string | null;
+  }[];
+}
+
+/*
+import { createClient } from "@supabase/supabase-js";
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 );
+*/
+export default function DealDetail({
+  deal,
+  viewsLastHour,
+}: DealDetailProps) {
 
-export default function DealDetail({ deal }: { deal: any }) {
+
+ 
+
   /* ---------------------------------------------------------
      🔹 Hooks
   --------------------------------------------------------- */
-  const { lang, hydrated, hydrate } = useLangStore();
+  const { lang, hydrated } = useLangStore();
   const [copied, setCopied] = useState(false);
   const [relatedLinks, setRelatedLinks] = useState<any[]>([]);
-  const [viewsLastHour, setViewsLastHour] = useState<number>(0);
-
-  useEffect(() => {
-    hydrate();
-  }, []);
-
-  /* ---------------------------------------------------------
-     🔹 Deal view tracking (deduped per session)
-  --------------------------------------------------------- */
- useEffect(() => {
-  if (!deal?.id) return;
-
-  const isSlug = window.location.pathname.includes("/deals/");
-  const sessionKey = isSlug
-    ? `dw_deal_viewed_slug_${deal.id}`
-    : `dw_deal_viewed_internal_${deal.id}`;
-
-  if (sessionStorage.getItem(sessionKey)) return;
-
-  sessionStorage.setItem(sessionKey, "1");
-
-  trackEvent({
-    event_name: "deal_page_view",
-    event_type: "view",
-    deal_id: deal.id,
-    page: window.location.pathname + window.location.search,
-    referrer: document.referrer || null,
-    user_agent: navigator.userAgent,
-  });
-}, [deal?.id]);
-
-  //const [viewsLastHour, setViewsLastHour] = useState<number>(0);
-
-useEffect(() => {
-  if (!deal?.id) return;
-
-  const fetchViews = async () => {
-    try {
-      const res = await fetch(`/api/deals/${deal.id}/views-last-hour`);
-      const json = await res.json();
-      setViewsLastHour(json.count ?? 0);
-    } catch (e) {
-      console.error("Failed to load viewsLastHour", e);
-    }
-  };
-
-  fetchViews();
-}, [deal?.id]);
-
-
-  /* ---------------------------------------------------------
-     🔹 Fetch views in last hour (client-safe)
-  --------------------------------------------------------- */
  
+   
   /* ---------------------------------------------------------
      🔹 Load related links
   --------------------------------------------------------- */
-  useEffect(() => {
+ /* useEffect(() => {
     if (!deal?.id) return;
 
     supabase
@@ -95,7 +97,7 @@ useEffect(() => {
         setRelatedLinks(data ?? []);
       });
   }, [deal?.id]);
-
+*/
   if (!hydrated) return null;
 
   if (!deal) {
@@ -127,52 +129,73 @@ const otherDeals =
     ? getAbsoluteLocalTime(publishedAt)
     : null;
   const ageLevel = publishedAt ? getDealAgeLevel(publishedAt) : null;
+const hasValidDiscount =
+  deal.old_price != null &&
+  deal.old_price > 0 &&
+  deal.current_price != null &&
+  deal.old_price > deal.current_price;
 
   /* ---------------------------------------------------------
      🔹 UI
   --------------------------------------------------------- */
   return (
     <div className="flex flex-col min-h-0 overflow-hidden bg-white">
-      <div className="overflow-y-auto flex-1 p-6 pb-28 custom-scroll">
-  {/* Heat level */}
-        {deal.deal_level && (
-          <div
-            className={`self-start mb-4 px-3 py-1 rounded-full text-white text-sm font-medium ${
-              deal.deal_level.includes("Flaming")
-                ? "bg-red-600"
-                : deal.deal_level.includes("Searing")
-                ? "bg-orange-500"
-                : deal.deal_level.includes("Scorching")
-                ? "bg-amber-500"
-                : deal.deal_level.includes("Blistering")
-                ? "bg-yellow-500 text-gray-900"
-                : "bg-gray-400"
-            }`}
-          >
-            {deal.deal_level}
-          </div>
-        )}
+      <div className="overflow-y-auto flex-1 pt-4 px-6 pb-24 custom-scroll">
 
-        <div className="flex items-start justify-between gap-3 mb-1">
-          <h1 className="text-xl font-bold text-slate-900 flex-1">
-            {title || "Untitled Deal"}
-          </h1>
+  <div className="flex items-center justify-between mb-3">
+  {/* LEFT: Views (future-ready) */}
+  <div className="text-xs text-slate-500">
+    {/* 👁 124 views */}
+  </div>
 
-          <ShareDealButton
-            title={`${title} – $${deal.current_price}`}
-            url={`https://www.dealswindfall.com/deals/${deal.id}-${deal.slug}`}
-          />
-        </div>
+  {/* RIGHT: Heat + Share */}
+  <div className="flex items-center gap-2">
+    {deal.deal_level && (
+      <div
+        title={deal.deal_level}
+        className="flex items-center gap-1 px-2 py-1 rounded-full
+                   bg-orange-50 border border-orange-200
+                   text-lg shadow-sm"
+      >
+        {Array.from({
+          length: deal.deal_level.includes("Flaming")
+            ? 4
+            : deal.deal_level.includes("Searing")
+            ? 3
+            : deal.deal_level.includes("Scorching")
+            ? 2
+            : 1,
+        }).map((_, i) => (
+          <span key={i} className="leading-none">🔥</span>
+        ))}
+      </div>
+    )}
+ <div className="flex items-center gap-2">
+<SaveDealButton deal={deal} />
 
-        {viewsLastHour > 0 && (
-          <p className="text-xs text-orange-600 mb-4">
-            🔥 {viewsLastHour} people viewed this deal in the last hour
-          </p>
-        )}
-		
+    <ShareDealButton
+      title={`${title} – $${deal.current_price}`}
+      url={`https://www.dealswindfall.com/deals/${deal.id}-${deal.slug}`}
+    />
+    </div>
+  </div>
+</div>
+
+{/* TITLE */}
+<h1 className="text-xl md:text-2xl font-bold text-slate-900 text-center leading-snug mb-4">
+  {title || "Untitled Deal"}
+</h1>
+
+{/* Views last hour */}
+{typeof viewsLastHour === "number" && viewsLastHour > 0 && (
+  <p className="text-xs text-orange-600 mb-4 text-center">
+    🔥 {viewsLastHour} people viewed this deal in the last hour
+  </p>
+)}
+
 		 {/* Image */}
         {deal.image_link && (
-          <div className="flex justify-center mb-5">
+          <div className="flex justify-center mb-4">
             <img
               src={deal.image_link}
               alt={title}
@@ -183,26 +206,29 @@ const otherDeals =
 
         {/* View Deal Button */}
         {deal.product_link && (
-          <div className="mb-4 space-y-1">
-            <a
-              href={deal.product_link}
-              target="_blank"
-              rel="noopener noreferrer"
-              onClick={() =>
-                trackEvent({
-                  event_name: "deal_outbound_click",
-                  event_type: "click",
-                  page: window.location.pathname,
-                  deal_id: deal.id,
-                  store: deal.store_name,
-                  category: deal.category,
-                  user_agent: navigator.userAgent,
-                })
-              }
-              className="w-full h-12 flex items-center justify-center bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-semibold shadow-sm"
-            >
-              {viewDealText}
-            </a>
+          <div className="mb-4 space-y-1 max-w-xl mx-auto">
+
+          <a
+  href={`/go/${deal.id}`}
+  target="_blank"
+  rel="noopener noreferrer"
+  onClick={() =>
+    trackEvent({
+      event_name: "deal_outbound_click",
+      event_type: "click",
+      page: window.location.pathname,
+      deal_id: deal.id,
+      store: deal.store_name,
+      category: deal.category,
+      user_agent: navigator.userAgent,
+    })
+  }
+  className="w-full h-12 flex items-center justify-center bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-semibold shadow-sm"
+>
+  {viewDealText}
+</a>
+
+
 
             {deal.store_name && (
               <p className="text-xs text-slate-400">
@@ -215,88 +241,118 @@ const otherDeals =
 
 
         {/* rest of your UI stays unchanged */}
-        <TelegramCTA />
-		  {/* Coupon */}
-        {deal.coupon_code && (
-          <div className="mb-4 p-3 bg-amber-50 border rounded-xl">
-            <p className="text-sm font-medium mb-2">{couponLabel}</p>
+      
+		  {deal.coupon_code && (
+  <div className="flex items-center gap-3 mb-4 text-sm">
+    <span className="px-2 py-1 rounded bg-slate-100 text-slate-700 font-medium">
+      Coupon
+    </span>
 
-            <div className="flex gap-2">
-              <div className="px-4 py-2 bg-yellow-100 border rounded font-mono">
-                {deal.coupon_code}
-              </div>
+    <span className="px-3 py-1 rounded border font-mono bg-white">
+      {deal.coupon_code}
+    </span>
 
-              <button
-                onClick={() => {
-                  navigator.clipboard.writeText(deal.coupon_code);
-                  setCopied(true);
-                  setTimeout(() => setCopied(false), 1500);
-                }}
-                className="px-3 py-2 border rounded"
-              >
-                {copied ? copiedText : copyText}
-              </button>
-            </div>
-          </div>
-        )}
+   <button
+  onClick={() => {
+    if (!deal.coupon_code) return;
 
-        {/* Prices */}
-        <div className="flex gap-3 mb-3">
-          {deal.current_price != null && (
-            <span className="text-3xl font-bold text-green-600">
-              ${deal.current_price.toFixed(2)}
-            </span>
-          )}
+    navigator.clipboard.writeText(deal.coupon_code);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1500);
+  }}
+  className="px-3 py-1 rounded border text-sm hover:bg-slate-50"
+>
+  {copied ? copiedText : copyText}
+</button>
 
-          {deal.old_price != null && (
-            <span className="line-through text-slate-400">
-              ${deal.old_price.toFixed(2)}
-            </span>
-          )}
+  </div>
+)}
 
-          {deal.percent_diff != null && (
-            <span className="text-red-600 font-semibold">
-              -{deal.percent_diff.toFixed(0)}%
-            </span>
-          )}
-        </div>
 
-        {relativeTime && (
-          <div className="text-sm text-slate-500 mb-4">
-            {addedOn}: {relativeTime}
-            {absoluteTime && (
-              <span className="ml-1 text-slate-400">
-                ({absoluteTime})
-              </span>
-            )}
-            {ageLevel === "old" && (
-              <p className="text-amber-600">
-                ⚠️ Older deal — availability may have changed
-              </p>
-            )}
-          </div>
-        )}
+      {/* Prices */}
+<div className="flex items-baseline gap-3 mb-3">
+  {deal.current_price != null && (
+    <span className="text-3xl font-bold text-green-600">
+      ${deal.current_price.toFixed(2)}
+    </span>
+  )}
 
-        
-        {/* Additional Info */}
-       <div className="text-sm text-slate-500 space-y-1 mb-6">
+  {hasValidDiscount && (
+    <>
+      <span className="line-through text-slate-400">
+        ${deal.old_price!.toFixed(2)}
+      </span>
 
-          {deal.store_name && <p>Store: {deal.store_name}</p>}
-          {deal.category && <p>Category: {deal.category}</p>}
-          {deal.expire_date && (
-            <p>
-              {expiresOn}:{" "}
-              <span className="font-medium">
-                {new Date(deal.expire_date).toLocaleDateString()}
-              </span>
-            </p>
-          )}
-   
-        </div>
+      {deal.percent_diff != null && (
+        <span className="text-red-600 font-semibold">
+          -{deal.percent_diff.toFixed(0)}%
+        </span>
+      )}
+    </>
+  )}
+</div>
 
+
+       <div className="text-sm text-slate-500 space-y-0.5 mb-6">
+  {/* Added time */}
+  {relativeTime && (
+    <p>
+      {addedOn}: {relativeTime}
+      {absoluteTime && (
+        <span className="ml-1 text-slate-400">
+          ({absoluteTime})
+        </span>
+      )}
+    </p>
+  )}
+
+  {/* Store */}
+ {deal.store_name && (
+  <div className="flex items-center gap-2">
+    {STORE_ICONS[deal.store_name] && (
+      <img
+        src={STORE_ICONS[deal.store_name]}
+        alt={deal.store_name}
+        className="w-4 h-4 object-contain"
+      />
+    )}
+    <span>Store: {deal.store_name}</span>
+  </div>
+)}
+
+
+  {/* Category */}
+  {deal.category && (
+    <p>Category: {deal.category}</p>
+  )}
+
+  {/* Expiry */}
+  {deal.expire_date && (
+    <p>
+      {expiresOn}:{" "}
+      <span className="font-medium">
+        {new Date(deal.expire_date).toLocaleDateString()}
+      </span>
+    </p>
+  )}
+
+  {/* Age warning */}
+  {ageLevel === "old" && (
+    <p className="text-amber-600">
+      ⚠️ Older deal — availability may have changed
+    </p>
+  )}
+</div>
+
+{/* Telegram CTA — NOW SECONDARY */}
+<div className="mx-auto max-w-lg mb-8 px-4">
+  <TelegramCTA />
+</div>
         {/* Notes */}
+        
         {notes && (
-          <div className="text-sm text-slate-700 mb-6 whitespace-pre-line">
+          <div className="text-sm text-slate-700 mb-8 whitespace-pre-line leading-relaxed">
+
             {notes.replace(/https?:\/\/[^\s]+/g, "").trim()}
           </div>
         )}

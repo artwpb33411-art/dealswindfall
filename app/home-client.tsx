@@ -312,13 +312,7 @@ if (!hydrated) return null;
           {/* Deal Detail */}
           {isDealDetailOpen && (
             <div className="absolute inset-0 bg-white overflow-y-auto custom-scroll z-30 animate-slide-in-right">
-              <button
-                onClick={handleBackToDeals}
-                className="sticky top-0 bg-white/90 backdrop-blur px-4 py-2 text-gray-700 z-40 border-b border-gray-200"
-              >
-                ← Back
-              </button>
-
+           
               <DealDetail deal={selectedDeal} />
             </div>
           )}
@@ -335,6 +329,9 @@ if (!hydrated) return null;
             setSelectedCategory("");
             setActiveItem("hotDeals");
           }}
+          onSaved={() => {
+    router.push("/saved");
+  }}
           onAbout={() =>
             staticPage === "about" ? closeStaticPage() : openStaticPage("about")
           }

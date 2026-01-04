@@ -220,20 +220,41 @@ export async function GET(req: Request) {
       });
     }
 
-    const topInternalDeals = Object.entries(internalDealClicks)
-      .sort((a, b) => b[1] - a[1])
-      .slice(0, 20)
-      .map(([dealId, clicks]) => {
-        const meta = dealMetaMap[dealId] || {};
-        return {
-          deal_id: Number(dealId),
-          clicks,
-          description: meta.description ?? null,
-          store_name: meta.store_name ?? null,
-          category: meta.category ?? null,
-          internal_url: `/deal/${dealId}`,
-        };
-      });
+
+    /* ======================================================
+   DEAL PAGE VIEWS (REAL POPULARITY)
+====================================================== */
+
+const { data: dealViews, error: dealViewsErr } = await supabaseAdmin
+  .from("deal_page_views")
+  .select("deal_id")
+  .gte("created_at", startIso)
+  .lte("created_at", endIso);
+
+if (dealViewsErr) throw dealViewsErr;
+
+const dealViewCounts: Record<string, number> = {};
+
+(dealViews || []).forEach((row: any) => {
+  const key = String(row.deal_id);
+  dealViewCounts[key] = (dealViewCounts[key] || 0) + 1;
+});
+
+
+   const topInternalDeals = Object.entries(dealViewCounts)
+  .sort((a, b) => b[1] - a[1])
+  .slice(0, 20)
+  .map(([dealId, views]) => {
+    const meta = dealMetaMap[dealId] || {};
+    return {
+      deal_id: Number(dealId),
+      views,
+      description: meta.description ?? null,
+      store_name: meta.store_name ?? null,
+      category: meta.category ?? null,
+      internal_url: `/deals/${dealId}`,
+    };
+  });
 
     const topOutboundDeals = Object.entries(outboundDealClicks)
       .sort((a, b) => b[1] - a[1])

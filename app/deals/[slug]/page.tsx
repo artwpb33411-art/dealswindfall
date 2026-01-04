@@ -2,7 +2,9 @@
 
 import { notFound } from "next/navigation";
 import { createClient } from "@supabase/supabase-js";
-import DealClient from "./DealClient";
+import DealDetail from "@/components/DealDetail";
+import SiteShell from "@/components/layout/SiteShell";
+
 import { getDealViewsLastHour } from "@/lib/dealViews";
 
 
@@ -108,10 +110,10 @@ export default async function DealPage(props: {
 
   if (!deal) return notFound();
 const viewsLastHour = await getDealViewsLastHour(deal.id);
-  return (
-    <DealClient
-      deal={deal}
-      viewsLastHour={viewsLastHour}
-    />
-  );
+ return (
+ <SiteShell>
+    <DealDetail deal={deal} viewsLastHour={viewsLastHour} />
+  </SiteShell>
+);
+
 }

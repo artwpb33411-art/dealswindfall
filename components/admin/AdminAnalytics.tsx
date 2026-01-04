@@ -397,8 +397,8 @@ export default function AdminAnalytics() {
       {/* TOP DEALS - INTERNAL & OUTBOUND */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <TopDealsTable
-          title="Top 20 Clicked Deals (On Site)"
-          deals={stats.top_internal_deals}
+          title="Top 20 Viewed Deals (On Site)"
+          deals={stats.top_viewed_deals}
         />
         <TopDealsTable
           title="Top 20 Outbound Clicked Deals"

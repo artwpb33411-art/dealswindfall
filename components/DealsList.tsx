@@ -34,7 +34,12 @@ export default function DealsList({
   onSelectDeal,
   searchQuery,
   scrollRef,
+
+  // ✅ NEW
+  savedOnly = false,
+  savedIds = [],
 }: any) {
+
   /* -----------------------------------------------------------
      Language store
   ----------------------------------------------------------- */
@@ -75,6 +80,15 @@ export default function DealsList({
     .eq("status", "Published")
     .order("display_order", { ascending: false });
 
+     if (savedOnly) {
+    if (!savedIds.length) {
+      // No saved deals → return empty result safely
+      return query.eq("id", -1);
+    }
+
+    return query.in("id", savedIds);
+  }
+
   if (selectedStore && selectedStore !== "Recent Deals") {
     query = query.ilike("store_name", `%${selectedStore}%`);
   }
@@ -101,6 +115,8 @@ export default function DealsList({
       `description.ilike.%${debouncedSearch}%,description_es.ilike.%${debouncedSearch}%,store_name.ilike.%${debouncedSearch}%,category.ilike.%${debouncedSearch}%`
     );
   }
+
+  
 
   return query;
 };
@@ -140,12 +156,18 @@ export default function DealsList({
     showHotDeals,
     debouncedSearch,
     lang,
+
+    savedOnly,
+  savedIds.join(","), // forces refresh when saved list changes
   ]);
 
   /* -----------------------------------------------------------
      Load more (infinite scroll)
   ----------------------------------------------------------- */
+ 
+ 
   const loadMore = async () => {
+     if (savedOnly) return;
     if (loadingMore || !hasMore) return;
 
     setLoadingMore(true);
@@ -272,6 +294,11 @@ if (!visitorId) {
 
       {deals.map((deal) => {
         const title = lang === "en" ? deal.description : deal.description_es;
+const hasValidDiscount =
+  deal.old_price != null &&
+  deal.old_price > 0 &&
+  deal.current_price != null &&
+  deal.old_price > deal.current_price;
 
         return (
           <a
@@ -325,25 +352,28 @@ if (!visitorId) {
 )}
 
 
-              <div className="text-sm text-gray-600 mt-1">
-                {deal.current_price && (
-                  <span className="font-semibold text-green-600">
-                    ${deal.current_price.toFixed(2)}
-                  </span>
-                )}
+           <div className="text-sm text-gray-600 mt-1">
+  {deal.current_price != null && (
+    <span className="font-semibold text-green-600">
+      ${deal.current_price.toFixed(2)}
+    </span>
+  )}
 
-                {deal.old_price && (
-                  <span className="ml-2 line-through text-gray-400">
-                    ${deal.old_price.toFixed(2)}
-                  </span>
-                )}
+  {hasValidDiscount && (
+    <>
+      <span className="ml-2 line-through text-gray-400">
+        ${deal.old_price!.toFixed(2)}
+      </span>
 
-                {deal.percent_diff && (
-                  <span className="ml-2 text-sm font-bold text-green-600">
-                    -{deal.percent_diff.toFixed(0)}%
-                  </span>
-                )}
-              </div>
+      {deal.percent_diff != null && (
+        <span className="ml-2 text-sm font-bold text-green-600">
+          -{deal.percent_diff.toFixed(0)}%
+        </span>
+      )}
+    </>
+  )}
+</div>
+
             </div>
           </a>
         );
