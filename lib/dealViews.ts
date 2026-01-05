@@ -1,16 +1,18 @@
-import { supabaseAdmin } from "@/lib/supabaseAdmin";
+import { createClient } from "@supabase/supabase-js";
 
-export async function getDealViewsLastHour(dealId: number): Promise<number> {
-  const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+);
 
-  const { count, error } = await supabaseAdmin
+export async function getDealViewsTotal(dealId: number): Promise<number> {
+  const { count, error } = await supabase
     .from("deal_page_views")
     .select("*", { count: "exact", head: true })
-    .eq("deal_id", dealId)
-    .gte("created_at", oneHourAgo);
+    .eq("deal_id", dealId);
 
   if (error) {
-    console.error("getDealViewsLastHour error:", error);
+    console.error("getDealViewsTotal error:", error);
     return 0;
   }
 

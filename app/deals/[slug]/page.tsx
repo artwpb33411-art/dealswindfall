@@ -5,8 +5,9 @@ import { createClient } from "@supabase/supabase-js";
 import DealDetail from "@/components/DealDetail";
 import SiteShell from "@/components/layout/SiteShell";
 
-import { getDealViewsLastHour } from "@/lib/dealViews";
+//import { getDealViewsLastHour } from "@/lib/dealViews";
 
+import { getDealViewsTotal } from "@/lib/dealViews";
 
 
 const supabase = createClient(
@@ -42,7 +43,7 @@ export async function generateMetadata(props: {
     .maybeSingle();
 
   if (!deal) return notFound();
-const viewsLastHour = await getDealViewsLastHour(deal.id);
+
   // 2️⃣ Resolve canonical ID
   const canonicalId =
     deal.canonical_to_id ?? deal.superseded_by_id ?? deal.id;
@@ -109,10 +110,12 @@ export default async function DealPage(props: {
     .maybeSingle();
 
   if (!deal) return notFound();
-const viewsLastHour = await getDealViewsLastHour(deal.id);
+const totalViews = await getDealViewsTotal(deal.id);
+
  return (
  <SiteShell>
-    <DealDetail deal={deal} viewsLastHour={viewsLastHour} />
+    <DealDetail deal={deal} totalViews={totalViews} />
+
   </SiteShell>
 );
 

@@ -1,8 +1,8 @@
-import Image from "next/image";
 import { createClient } from "@supabase/supabase-js";
 import { notFound } from "next/navigation";
 import DealDetail from "@/components/DealDetail";
 import SiteShell from "@/components/layout/SiteShell";
+import { getDealViewsTotal } from "@/lib/dealViews";
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -16,6 +16,7 @@ function extractId(slug: string | undefined): number | null {
   const id = Number(idPart);
   return Number.isNaN(id) ? null : id;
 }
+
 function getCanonicalDealId(deal: any) {
   return deal.superseded_by_id || deal.canonical_to_id || deal.id;
 }
@@ -23,8 +24,6 @@ function getCanonicalDealId(deal: any) {
 // ===============================
 //   SEO Metadata (Spanish)
 // ===============================
-
-
 export async function generateMetadata({ params }: any) {
   const { slug } = await params;
 
@@ -49,8 +48,7 @@ export async function generateMetadata({ params }: any) {
   const canonicalId = getCanonicalDealId(deal);
 
   const baseUrl =
-    process.env.NEXT_PUBLIC_SITE_URL ||
-    "http://localhost:3000";
+    process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
 
   return {
     title: deal.description_es || deal.description,
@@ -72,13 +70,11 @@ export async function generateMetadata({ params }: any) {
   };
 }
 
-
-
 // ===============================
 //  PAGE COMPONENT (Spanish)
 // ===============================
 export default async function SpanishDealPage({ params }: any) {
-  const { slug } = await params; // REQUIRED FIX
+  const { slug } = await params;
 
   const id = extractId(slug);
   if (!id) return notFound();
@@ -90,11 +86,12 @@ export default async function SpanishDealPage({ params }: any) {
     .maybeSingle();
 
   if (!deal) return notFound();
-return (
-  <SiteShell>
-    <DealDetail deal={deal} />
-  </SiteShell>
-);
 
+  const totalViews = await getDealViewsTotal(deal.id);
 
+  return (
+    <SiteShell>
+      <DealDetail deal={deal} totalViews={totalViews} />
+    </SiteShell>
+  );
 }

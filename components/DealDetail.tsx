@@ -7,6 +7,7 @@ import { trackEvent } from "@/lib/trackEvent";
 import TelegramCTA from "@/components/shared/TelegramCTA";
 import ShareDealButton from "@/components/shared/ShareDealButton";
 import Disclaimer from "@/components/Disclaimer";
+import { trackDealView } from "@/lib/trackDealView";
 
 import SaveDealButton from "@/components/SaveDealButton";
 import {
@@ -49,7 +50,7 @@ interface DealDetailProps {
   };
 
   /** Optional, display-only */
-  viewsLastHour?: number;
+    totalViews?: number;
 
   /** Optional, display-only (future-proof) */
   relatedLinks?: {
@@ -59,16 +60,9 @@ interface DealDetailProps {
   }[];
 }
 
-/*
-import { createClient } from "@supabase/supabase-js";
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
-*/
 export default function DealDetail({
   deal,
-  viewsLastHour,
+  totalViews,
 }: DealDetailProps) {
 
 
@@ -85,20 +79,25 @@ export default function DealDetail({
   /* ---------------------------------------------------------
      🔹 Load related links
   --------------------------------------------------------- */
- /* useEffect(() => {
+ /*
+  if (!hydrated) return null;
+useEffect(() => {
+  if (deal?.id) {
+    trackDealView(deal.id);
+  }
+}, [deal?.id]);
+*/
+ // ✅ Hooks must ALWAYS run
+  useEffect(() => {
+    if (!hydrated) return;      // guard INSIDE effect
     if (!deal?.id) return;
 
-    supabase
-      .from("deal_related_links")
-      .select("id, url, title")
-      .eq("deal_id", deal.id)
-      .order("id", { ascending: true })
-      .then(({ data }) => {
-        setRelatedLinks(data ?? []);
-      });
-  }, [deal?.id]);
-*/
+    trackDealView(deal.id);
+  }, [hydrated, deal?.id]);
+
+  // ✅ Conditional return AFTER hooks
   if (!hydrated) return null;
+
 
   if (!deal) {
     return (
@@ -141,12 +140,26 @@ const hasValidDiscount =
   return (
     <div className="flex flex-col min-h-0 overflow-hidden bg-white">
       <div className="overflow-y-auto flex-1 pt-4 px-6 pb-24 custom-scroll">
-
-  <div className="flex items-center justify-between mb-3">
-  {/* LEFT: Views (future-ready) */}
-  <div className="text-xs text-slate-500">
-    {/* 👁 124 views */}
+<div className="flex items-center justify-between mb-3">
+  {/* LEFT: Total Views */}
+{typeof totalViews === "number" && totalViews > 0 && (
+  <div
+    className="
+      inline-flex items-center gap-1.5
+      px-2.5 py-1
+      text-xs font-medium
+      text-slate-600
+      bg-slate-50
+      border border-slate-200
+      rounded-full
+    "
+    title="Total views"
+  >
+    <span className="text-slate-400">👁</span>
+    <span>{totalViews.toLocaleString()}</span>
+    <span className="text-slate-400">views</span>
   </div>
+)}
 
   {/* RIGHT: Heat + Share */}
   <div className="flex items-center gap-2">
@@ -186,12 +199,7 @@ const hasValidDiscount =
   {title || "Untitled Deal"}
 </h1>
 
-{/* Views last hour */}
-{typeof viewsLastHour === "number" && viewsLastHour > 0 && (
-  <p className="text-xs text-orange-600 mb-4 text-center">
-    🔥 {viewsLastHour} people viewed this deal in the last hour
-  </p>
-)}
+
 
 		 {/* Image */}
         {deal.image_link && (

@@ -18,8 +18,7 @@ import PrivacyPage from "@/components/static/PrivacyPage";
 import ContactPage from "@/components/static/ContactPage";
 import MobileBottomNav from "@/components/MobileBottomNav";
 import useDebounce from "@/hooks/useDebounce";
-//import { initScrollDepthTracker } from "@/lib/analytics/scrollDepth";
-//import { initDealScrollPauseTracker } from "@/lib/analytics/dealScrollPause";
+
 
 
 
@@ -31,7 +30,7 @@ const supabase = createClient(
 export default function HomeClient() {
   const router = useRouter();
   const searchParams = useSearchParams();
-
+const [dealTotalViews, setDealTotalViews] = useState<number | null>(null);
   // ------------ STATE ------------
   const [selectedStore, setSelectedStore] = useState("Recent Deals");
   const [selectedCategory, setSelectedCategory] = useState("");
@@ -54,9 +53,7 @@ export default function HomeClient() {
 
   // Scroll restoration for DealsList
   const dealsListRef = useRef<HTMLDivElement | null>(null);
-  //const savedScroll = useRef(0);
-  //const [shouldRestoreScroll, setShouldRestoreScroll] = useState(false);
-
+ 
   // ------------ Sync with URL (/?deal=ID) ------------
   useEffect(() => {
     const dealParam = searchParams.get("deal");
@@ -67,6 +64,8 @@ export default function HomeClient() {
       return;
     }
 
+
+    
     const id = Number(dealParam);
     if (Number.isNaN(id)) return;
 
@@ -86,20 +85,30 @@ export default function HomeClient() {
     fetchDeal();
   }, [searchParams]);
 
-  // ------------ Restore scroll for mobile ------------
- /* useEffect(() => {
-    if (!shouldRestoreScroll) return;
+  
 
-    requestAnimationFrame(() => {
-      requestAnimationFrame(() => {
-        if (dealsListRef.current) {
-          dealsListRef.current.scrollTop = savedScroll.current;
-        }
-        setShouldRestoreScroll(false);
-      });
-    });
-  }, [shouldRestoreScroll]);
-*/
+  useEffect(() => {
+  if (!selectedDeal?.id) {
+    setDealTotalViews(null);
+    return;
+  }
+
+  const fetchTotalViews = async () => {
+    try {
+      const res = await fetch(`/api/deals/${selectedDeal.id}/views-total`);
+      const json = await res.json();
+      setDealTotalViews(Number(json.total) || 0);
+      console.log("views total raw:", json.total, typeof json.total);
+
+
+    } catch {
+      setDealTotalViews(null);
+    }
+  };
+
+  fetchTotalViews();
+}, [selectedDeal?.id]);
+
   // ------------ Handlers ------------
   const goHome = () => {
     router.push("/", { scroll: false });
@@ -170,24 +179,6 @@ export default function HomeClient() {
     setStaticPage(null);
   };
 
- /* const handleSelectDeal = (deal: any) => {
-    if (dealsListRef.current) {
-      savedScroll.current = dealsListRef.current.scrollTop;
-    }
-
-    setSelectedDeal(deal);
-    setIsDealDetailOpen(true);
-    router.push(`/?deal=${deal.id}`, { scroll: false });
-  };
-
-  const handleBackToDeals = () => {
-    setIsDealDetailOpen(false);
-    setSelectedDeal(null);
-    router.push("/", { scroll: false });
-    //setShouldRestoreScroll(true);
-  };
-  
-  */
 
 const handleSelectDeal = (deal: any) => {
   setSelectedDeal(deal);
@@ -210,25 +201,6 @@ useEffect(() => {
 }, []);
 
 
-// ------------ Analytics (Scroll + Intent) ------------
-/*useEffect(() => {
-  if (typeof window === "undefined") return;
-
-  let visitorId = localStorage.getItem("visitor_id");
-  if (!visitorId) {
-    visitorId = crypto.randomUUID();
-    localStorage.setItem("visitor_id", visitorId);
-  }
-
-  const cleanupScroll = initScrollDepthTracker(visitorId);
-  const cleanupIntent = initDealScrollPauseTracker(visitorId);
-
-  return () => {
-    cleanupScroll();
-    cleanupIntent();
-  };
-}, []);
-*/
 
 if (!hydrated) return null;
 
@@ -313,7 +285,8 @@ if (!hydrated) return null;
           {isDealDetailOpen && (
             <div className="absolute inset-0 bg-white overflow-y-auto custom-scroll z-30 animate-slide-in-right">
            
-              <DealDetail deal={selectedDeal} />
+             <DealDetail deal={selectedDeal} totalViews={dealTotalViews ?? undefined} />
+
             </div>
           )}
         </div>
@@ -407,7 +380,8 @@ if (!hydrated) return null;
 
           {/* Deal Detail */}
           <div className="bg-white overflow-y-auto custom-scroll border-r border-gray-100 min-h-0">
-            <DealDetail deal={selectedDeal} />
+           <DealDetail deal={selectedDeal} totalViews={dealTotalViews ?? undefined} />
+
           </div>
 
           {/* Right-Side Ads */}

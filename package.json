@@ -49,6 +49,7 @@
     "eslint": "^9",
     "eslint-config-next": "16.0.1",
     "tailwindcss": "^4.1.16",
+    "ts-prune": "^0.10.3",
     "typescript": "^5"
   }
 }

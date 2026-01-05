@@ -27,32 +27,6 @@ export async function POST(req: Request) {
     }
 
     // ===============================
-    // STEP 2: Store deal page views
-    // ===============================
-    if (event_name === "deal_page_view" && page?.includes("/deals/")) {
-
-      console.log("DEAL PAGE VIEW HIT", { event_name, page });
-
-      const slugPart = page.split("/deals/")[1];
-      const dealId = Number(slugPart?.split("-")[0]);
-
-      if (!Number.isNaN(dealId)) {
-        const { error: dealViewError } = await supabaseAdmin
-          .from("deal_page_views")
-          .insert({
-            deal_id: dealId,
-            path: page,
-            referrer: referrer || null,
-            user_agent: user_agent || null,
-          });
-
-        if (dealViewError) {
-          console.error("deal_page_views insert error:", dealViewError);
-        }
-      }
-    }
-
-    // ===============================
     // EXISTING analytics insert (KEEP)
     // ===============================
     const { data, error } = await supabaseAdmin
