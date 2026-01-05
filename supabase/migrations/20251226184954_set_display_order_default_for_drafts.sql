@@ -1,2 +1,0 @@
-ALTER TABLE deals
-ALTER COLUMN display_order SET DEFAULT 0;
