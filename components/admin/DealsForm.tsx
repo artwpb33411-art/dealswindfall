@@ -14,7 +14,7 @@ import { useEffect, useState } from "react";
 const STORE_TAGS = [
   "",
   "Amazon","Walmart","Target","Home Depot","Costco","Best Buy",
-  "Sam’s Club","Lowe’s","Kohl’s","Macy’s","Staples","Office Depot","JCPenney",
+  "Sam’s Club","Lowe’s","Kohl’s","Macy’s","Staples","Office Depot","JCPenney", "Woot", "Ebay", "Dell", "HP",
 ];
 
 const CAT_TAGS = [
@@ -223,6 +223,7 @@ if (!res.ok) {
   return (
     <form onSubmit={onSubmit} className="bg-white p-6 rounded shadow space-y-4 max-w-2xl">
       <h2 className="text-lg font-semibold text-blue-600">Add New Deal</h2>
+
       {result && (
   <div
     className={`rounded p-3 text-sm font-medium ${

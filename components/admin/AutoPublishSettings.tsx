@@ -41,6 +41,10 @@ const ALL_STORES = [
   "Staples",
   "Office Depot",
   "JCPenney",
+  "Ebay",
+  "Dell",
+  "Woot",
+  "HP",
 ];
 
 export default function AutoPublishSettings() {

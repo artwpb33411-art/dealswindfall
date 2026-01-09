@@ -1,10 +1,10 @@
 "use client";
-import { Home, Flame, Store, Info, Shield, Mail, FileText } from "lucide-react";
+import { Home, Flame, Heart, Info, Shield, Mail, FileText } from "lucide-react";
 
 export default function MobileBottomNav({
   onHome,
   onHotDeals,
-  onStores,
+  onSaved,
   onAbout,
   onPrivacy,
   onContact,
@@ -73,6 +73,19 @@ export default function MobileBottomNav({
       >
         <Mail size={22} />
       </button>
+
+      {/* SAVED DEALS */}
+      <button
+        onClick={onSaved}
+        className={`navbtn ${
+          active === "saved" ? "text-red-600" : "text-gray-600"
+        }`}
+        title="Saved Deals"
+      >
+        <Heart size={22} />
+      </button>
+
+
 
     </nav>
   );

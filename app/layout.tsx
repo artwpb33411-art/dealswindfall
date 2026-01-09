@@ -4,9 +4,10 @@ import "./globals.css";
 import { Inter } from "next/font/google";
 import Script from "next/script";
 import TrackPageView from "./TrackPageView";
-
+import LangHydrator from "./LangHydrator";
 import { Analytics } from "@vercel/analytics/react";
 import { SpeedInsights } from "@vercel/speed-insights/next";
+import { SavedDealsProvider } from "@/lib/SavedDealsContext";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -29,6 +30,9 @@ const HOTJAR_ID = 6577402;
 export const metadata: Metadata = {
   title: "DealsWindfall — Your Daily Windfall of Savings",
   description: "The best daily deals from all major online stores.",
+  icons: {
+    icon: "/favicon.ico",
+  },
 };
 
 export default function RootLayout({
@@ -70,16 +74,20 @@ export default function RootLayout({
         </Script>
       </head>
 
-      <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
-       <TrackPageView /> 
-        {children}
+     <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
+  <TrackPageView /> 
 
-        {/* ---------------- VERCEL ANALYTICS ---------------- */}
-        <Analytics />
+  <SavedDealsProvider>
+          <LangHydrator>
+            {children}
+          </LangHydrator>
+        </SavedDealsProvider>
 
-        {/* ---------------- VERCEL SPEED INSIGHTS ---------------- */}
-        <SpeedInsights />
-      </body>
+
+  <Analytics />
+  <SpeedInsights />
+</body>
+
     </html>
   );
 }
