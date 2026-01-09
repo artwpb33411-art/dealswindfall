@@ -1,15 +1,23 @@
+// ❌ IMPORTANT: DO NOT ADD "use client"
+
 import { createClient } from "@supabase/supabase-js";
 import { notFound } from "next/navigation";
 import DealDetail from "@/components/DealDetail";
 import SiteShell from "@/components/layout/SiteShell";
 import { getDealViewsTotal } from "@/lib/dealViews";
+import { getRelatedDeals } from "@/lib/getRelatedDeals";
 
+/* -------------------------------------------------
+   Supabase (server-side)
+-------------------------------------------------- */
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 );
 
-// Extract numeric ID from slug (id-text)
+/* -------------------------------------------------
+   Helpers
+-------------------------------------------------- */
 function extractId(slug: string | undefined): number | null {
   if (!slug) return null;
   const idPart = slug.split("-")[0];
@@ -21,9 +29,9 @@ function getCanonicalDealId(deal: any) {
   return deal.superseded_by_id || deal.canonical_to_id || deal.id;
 }
 
-// ===============================
-//   SEO Metadata (Spanish)
-// ===============================
+/* -------------------------------------------------
+   SEO Metadata (Spanish)
+-------------------------------------------------- */
 export async function generateMetadata({ params }: any) {
   const { slug } = await params;
 
@@ -70,9 +78,9 @@ export async function generateMetadata({ params }: any) {
   };
 }
 
-// ===============================
-//  PAGE COMPONENT (Spanish)
-// ===============================
+/* -------------------------------------------------
+   PAGE COMPONENT (Spanish)
+-------------------------------------------------- */
 export default async function SpanishDealPage({ params }: any) {
   const { slug } = await params;
 
@@ -89,9 +97,22 @@ export default async function SpanishDealPage({ params }: any) {
 
   const totalViews = await getDealViewsTotal(deal.id);
 
+  const relatedDeals = await getRelatedDeals({
+    dealId: deal.id,
+    category: deal.category,
+    store: deal.store_name,
+    price: deal.price,
+  });
+console.log("Related deals count:", relatedDeals.length);
+
   return (
     <SiteShell>
-      <DealDetail deal={deal} totalViews={totalViews} />
+      <DealDetail
+        deal={deal}
+        totalViews={totalViews}
+        relatedDeals={relatedDeals}
+        
+      />
     </SiteShell>
   );
 }

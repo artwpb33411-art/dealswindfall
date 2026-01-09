@@ -1,5 +1,6 @@
 "use client";
 import { STORE_ICONS } from "@/lib/storeIcons";
+import RelatedDeals from "@/components/deals/RelatedDeals";
 
 import { useEffect, useState } from "react";
 import { trackEvent } from "@/lib/trackEvent";
@@ -20,7 +21,15 @@ import { useLangStore } from "@/lib/languageStore";
 /* ---------------------------------------------------------
    🔹 Types (UI Contract)
 --------------------------------------------------------- */
-
+interface RelatedDeal {
+  id: number;
+  slug: string;
+  title: string;
+  price: number | null;
+  old_price: number | null;
+  image_url: string | null;
+  store_name: string | null;
+}
 interface DealDetailProps {
   deal: {
     id: number;
@@ -49,20 +58,17 @@ interface DealDetailProps {
     deal_level?: string | null;
   };
 
-  /** Optional, display-only */
+ 
     totalViews?: number;
-
-  /** Optional, display-only (future-proof) */
-  relatedLinks?: {
-    id: number;
-    url: string;
-    title?: string | null;
-  }[];
+ relatedDeals?: RelatedDeal[];
+ 
+ 
 }
 
 export default function DealDetail({
   deal,
   totalViews,
+   relatedDeals,
 }: DealDetailProps) {
 
 
@@ -73,7 +79,7 @@ export default function DealDetail({
   --------------------------------------------------------- */
   const { lang, hydrated } = useLangStore();
   const [copied, setCopied] = useState(false);
-  const [relatedLinks, setRelatedLinks] = useState<any[]>([]);
+ // const [relatedLinks, setRelatedLinks] = useState<any[]>([]);
  
    
   /* ---------------------------------------------------------
@@ -142,24 +148,34 @@ const hasValidDiscount =
       <div className="overflow-y-auto flex-1 pt-4 px-6 pb-24 custom-scroll">
 <div className="flex items-center justify-between mb-3">
   {/* LEFT: Total Views */}
-{typeof totalViews === "number" && totalViews > 0 && (
-  <div
-    className="
-      inline-flex items-center gap-1.5
-      px-2.5 py-1
-      text-xs font-medium
-      text-slate-600
-      bg-slate-50
-      border border-slate-200
-      rounded-full
-    "
-    title="Total views"
-  >
-    <span className="text-slate-400">👁</span>
-    <span>{totalViews.toLocaleString()}</span>
-    <span className="text-slate-400">views</span>
-  </div>
-)}
+<div
+  className={`
+    inline-flex items-center gap-1.5
+    px-2.5 py-1
+    text-xs font-medium
+    rounded-full
+    border
+    min-h-6
+    min-w-[72px]
+    transition-opacity
+    duration-200
+    ${
+      typeof totalViews === "number" && totalViews > 0
+        ? "opacity-100 bg-slate-50 border-slate-200 text-slate-600"
+        : "opacity-0 border-transparent"
+    }
+  `}
+  aria-hidden={!(typeof totalViews === "number" && totalViews > 0)}
+>
+  <span className="text-slate-400">👁</span>
+  <span>
+    {typeof totalViews === "number" ? totalViews.toLocaleString() : ""}
+  </span>
+  <span className="text-slate-400">views</span>
+</div>
+
+
+
 
   {/* RIGHT: Heat + Share */}
   <div className="flex items-center gap-2">
@@ -357,35 +373,33 @@ const hasValidDiscount =
 <div className="mx-auto max-w-lg mb-8 px-4">
   <TelegramCTA />
 </div>
+{/* Deals you may be interested in */}
+{relatedDeals && relatedDeals.length >= 2 && (
+ <RelatedDeals
+  deals={relatedDeals}
+  currentDealId={deal.id}
+/>
+
+)}
+
         {/* Notes */}
-        
+  <hr className="my-10 border-slate-200" />
+      
         {notes && (
-          <div className="text-sm text-slate-700 mb-8 whitespace-pre-line leading-relaxed">
+       <div className="
+  text-base
+  text-slate-800
+  leading-relaxed
+  whitespace-pre-line
+  max-w-3xl
+  
+">
+
 
             {notes.replace(/https?:\/\/[^\s]+/g, "").trim()}
           </div>
         )}
 
-        {/* Related Deals */}
-        {relatedLinks.length > 0 && (
-          <div className="mt-4 p-4 bg-gray-50 border rounded-lg">
-            <h3 className="font-semibold mb-3">{otherDeals}</h3>
-            <ul className="space-y-2">
-              {relatedLinks.map((item) => (
-                <li key={item.id}>
-                  <a
-                    href={item.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-blue-600 underline"
-                  >
-                    {item.title || item.url}
-                  </a>
-                </li>
-              ))}
-            </ul>
-          </div>
-        )}
 
         <Disclaimer />
       </div>

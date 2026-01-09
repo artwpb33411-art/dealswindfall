@@ -1,29 +1,35 @@
-// app/api/admin/analytics/route.ts
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
+import { estDateRangeToUtc } from "@/lib/timezone";
+
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
 
-function normalizeBrowser(device: string | null, ua: string | null) {
-  const s = (device || ua || "").toLowerCase();
 
-  if (s.includes("edg")) return "Edge";
-  if (s.includes("chrome") && !s.includes("edg")) return "Chrome";
-  if (s.includes("firefox")) return "Firefox";
-  if (s.includes("safari") && !s.includes("chrome")) return "Safari";
-  if (s.includes("samsungbrowser")) return "Samsung Internet";
-  if (s.includes("vercel")) return "Vercel Bot";
-  if (s.includes("google-read-aloud")) return "Google Bot";
 
-  return "Other";
+function isValidScreenSize(screen: string) {
+  const [w, h] = screen.split("x").map(Number);
+  if (!w || !h) return false;
+  if (w < 320 || h < 320) return false;
+  if (w > 4000 || h > 4000) return false;
+  if (w === h && w >= 1000) return false;
+  if (w === 800 && h === 600) return false;
+  return true;
 }
 
 
+/* -------------------------------------------------- */
+/* Route                                              */
+/* -------------------------------------------------- */
 
 export async function GET(req: Request) {
   try {
     const { searchParams } = new URL(req.url);
+
     const start = searchParams.get("start");
     const end = searchParams.get("end");
+    const limit = Number(searchParams.get("limit") || 20);
 
     if (!start || !end) {
       return NextResponse.json(
@@ -32,316 +38,266 @@ export async function GET(req: Request) {
       );
     }
 
-    // Use full-day range in UTC
-    const startIso = new Date(start).toISOString();
-    const endIso = new Date(end + "T23:59:59").toISOString();
+    const { fromUtc, toUtc } = estDateRangeToUtc(start, end);
 
-    /* ======================================================
-       1️⃣ EVENTS IN DATE RANGE
-    ====================================================== */
-    const { data: events, error: eventsError } = await supabaseAdmin
-      .from("analytics")
-      .select("*")
-      .gte("created_at", startIso)
-      .lte("created_at", endIso)
-      .order("created_at", { ascending: true });
+    /* ==================================================
+       SUMMARY METRICS (SQL-FIRST, GUARANTEED MONOTONIC)
+       ================================================== */
 
-    if (eventsError) throw eventsError;
-
-    /* ======================================================
-       2️⃣ NEW vs RETURNING VISITORS
-       - Uses visitor_id when available
-       - Falls back to ip_address
-    ====================================================== */
-    type VisitorKey = string;
-    const visitorFirstSeen: Record<VisitorKey, string> = {};
-
-    // First seen globally (all time)
-    const { data: allVisitors, error: visitorsErr } = await supabaseAdmin
-      .from("analytics")
-      .select("visitor_id, ip_address, created_at")
-      .order("created_at", { ascending: true });
-
-    if (visitorsErr) throw visitorsErr;
-
-    allVisitors?.forEach((row) => {
-      const key: VisitorKey =
-        row.visitor_id || row.ip_address || "unknown-" + row.created_at;
-      if (!visitorFirstSeen[key]) {
-        visitorFirstSeen[key] = row.created_at;
-      }
-    });
-
-    const visitorsInRange: Record<VisitorKey, boolean> = {};
-    events.forEach((ev: any) => {
-      const key: VisitorKey =
-        ev.visitor_id || ev.ip_address || "unknown-" + ev.id;
-      visitorsInRange[key] = true;
-    });
-
-    let newVisitors = 0;
-    let returningVisitors = 0;
-
-    Object.keys(visitorsInRange).forEach((key) => {
-      const firstSeen = visitorFirstSeen[key];
-      if (!firstSeen) return;
-      if (firstSeen >= startIso && firstSeen <= endIso) {
-        newVisitors++;
-      } else {
-        returningVisitors++;
-      }
-    });
-
-    /* ======================================================
-       3️⃣ BASIC COUNTS & CLICK AGGREGATION
-    ====================================================== */
-    let totalPageViews = 0;
-    let totalDealClicks = 0;
-    let totalOutboundClicks = 0;
-
-    const pageCounts: Record<string, number> = {};
-    const storeClicks: Record<string, number> = {};
-    const categoryClicks: Record<string, number> = {};
-    const dealClicks: Record<string, number> = {};
-
-    const internalDealClicks: Record<string, number> = {};
-    const outboundDealClicks: Record<string, number> = {};
-
-    events.forEach((ev: any) => {
-      const page = ev.page ?? "(empty)";
-      const store = ev.store ?? "(unknown)";
-      const category = ev.category ?? "(unknown)";
-      const dealId = ev.deal_id ?? null;
-      const dealKey = dealId != null ? String(dealId) : null;
-
-      // PAGE VIEWS
-      if (ev.event_type === "view") {
-        totalPageViews++;
-        pageCounts[page] = (pageCounts[page] || 0) + 1;
-      }
-
-      // INTERNAL DEAL CLICK (list pane)
-      if (ev.event_type === "click" && ev.event_name === "deal_click") {
-        totalDealClicks++;
-
-        if (ev.store) {
-          storeClicks[store] = (storeClicks[store] || 0) + 1;
-        }
-        if (ev.category) {
-          categoryClicks[category] = (categoryClicks[category] || 0) + 1;
-        }
-        if (dealKey) {
-          dealClicks[dealKey] = (dealClicks[dealKey] || 0) + 1;
-          internalDealClicks[dealKey] =
-            (internalDealClicks[dealKey] || 0) + 1;
-        }
-      }
-
-      // OUTBOUND CLICK (to Amazon / Walmart etc.)
-      if (
-        ev.event_type === "click" &&
-        ev.event_name === "deal_outbound_click"
-      ) {
-        totalOutboundClicks++;
-        if (dealKey) {
-          outboundDealClicks[dealKey] =
-            (outboundDealClicks[dealKey] || 0) + 1;
-        }
-      }
-    });
-
-    /* ======================================================
-       4️⃣ DEALS PUBLISHED IN DATE RANGE (CTR denominator)
-       - This is where Option A CTR happens.
-    ====================================================== */
-    const { data: dealsForCTR, error: dealsErr } = await supabaseAdmin
-      .from("deals")
-      .select("id, store_name, category, status, published_at")
-      .eq("status", "Published")
-      .gte("published_at", startIso)
-      .lte("published_at", endIso);
-
-    if (dealsErr) throw dealsErr;
-
-    const storeDealCounts: Record<string, number> = {};
-    const categoryDealCounts: Record<string, number> = {};
-
-    dealsForCTR?.forEach((d: any) => {
-      const store = d.store_name ?? "(unknown)";
-      const category = d.category ?? "(unknown)";
-      storeDealCounts[store] = (storeDealCounts[store] || 0) + 1;
-      categoryDealCounts[category] =
-        (categoryDealCounts[category] || 0) + 1;
-    });
-
-    /* ======================================================
-       5️⃣ CTR CALCULATION (Store / Category)
-       CTR = clicks (in date range) / deals published (in date range)
-    ====================================================== */
-    const storeCTR: Record<string, number> = {};
-    const categoryCTR: Record<string, number> = {};
-
-    Object.keys(storeDealCounts).forEach((store) => {
-      const clicks = storeClicks[store] || 0;
-      const dealsCount = storeDealCounts[store] || 1;
-      storeCTR[store] = clicks / dealsCount;
-    });
-
-    Object.keys(categoryDealCounts).forEach((cat) => {
-      const clicks = categoryClicks[cat] || 0;
-      const dealsCount = categoryDealCounts[cat] || 1;
-      categoryCTR[cat] = clicks / dealsCount;
-    });
-
-    /* ======================================================
-       6️⃣ TOP DEALS (INTERNAL + OUTBOUND)
-       - Based on clicks during date range
-       - Enriched with description + store_name + category
-    ====================================================== */
-    const clickedDealIds = Array.from(
-      new Set([
-        ...Object.keys(internalDealClicks),
-        ...Object.keys(outboundDealClicks),
-      ])
-    ).map((id) => Number(id));
-
-    let dealMetaMap: Record<string, any> = {};
-
-    if (clickedDealIds.length > 0) {
-      const { data: dealsForClicks, error: metaErr } = await supabaseAdmin
-        .from("deals")
-        .select("id, description, store_name, category")
-        .in("id", clickedDealIds);
-
-      if (metaErr) throw metaErr;
-
-      (dealsForClicks || []).forEach((d: any) => {
-        dealMetaMap[String(d.id)] = d;
-      });
-    }
-
-
-    /* ======================================================
-   DEAL PAGE VIEWS (REAL POPULARITY)
-====================================================== */
-
-const { data: dealViews, error: dealViewsErr } = await supabaseAdmin
-  .from("deal_page_views")
-  .select("deal_id")
-  .gte("created_at", startIso)
-  .lte("created_at", endIso);
-
-if (dealViewsErr) throw dealViewsErr;
-
-const dealViewCounts: Record<string, number> = {};
-
-(dealViews || []).forEach((row: any) => {
-  const key = String(row.deal_id);
-  dealViewCounts[key] = (dealViewCounts[key] || 0) + 1;
-});
-
-
-   const topInternalDeals = Object.entries(dealViewCounts)
-  .sort((a, b) => b[1] - a[1])
-  .slice(0, 20)
-  .map(([dealId, views]) => {
-    const meta = dealMetaMap[dealId] || {};
-    return {
-      deal_id: Number(dealId),
-      views,
-      description: meta.description ?? null,
-      store_name: meta.store_name ?? null,
-      category: meta.category ?? null,
-      internal_url: `/deals/${dealId}`,
-    };
+// STORE CTR STATS
+const { data: storeStats, error: storeErr } =
+  await supabaseAdmin.rpc("store_ctr_stats", {
+    from_ts: fromUtc,
+    to_ts: toUtc,
   });
 
-    const topOutboundDeals = Object.entries(outboundDealClicks)
+if (storeErr) throw storeErr;
+
+const { data: categoryCtrStats, error: catErr } =
+  await supabaseAdmin.rpc("category_ctr_stats", {
+    from_ts: fromUtc,
+    to_ts: toUtc,
+  });
+
+if (catErr) throw catErr;
+
+ 
+const { data: visitorsCount, error } =
+  await supabaseAdmin.rpc("count_unique_visitors", {
+    from_ts: fromUtc,
+    to_ts: toUtc,
+  });
+
+if (error) throw error;
+
+const { data: category_deal_views, error: cdvErr } =
+  await supabaseAdmin.rpc("category_deal_view_stats", {
+    from_ts: fromUtc,
+    to_ts: toUtc,
+  });
+
+if (cdvErr) throw cdvErr;
+
+
+    // 2️⃣ Page Views
+    const { count: pageViewsCount, error: pvErr } = await supabaseAdmin
+     .from("analytics_human")
+  .select("id", { count: "exact", head: true })
+  .eq("event_name", "page_view")
+  .gte("created_at", fromUtc)
+  .lte("created_at", toUtc)
+  .not("page", "like", "/admin%")
+  .not("page", "like", "/api%")
+  .not("user_agent", "ilike", "%bot%");
+
+    if (pvErr) throw pvErr;
+
+    // 3️⃣ Outbound Clicks (PER-DEAL UNIQUE)
+    const { data: outboundPairs, error: obErr } = await supabaseAdmin
+     .from("analytics_human")
+  .select("visitor_id, deal_id")
+  .eq("event_name", "deal_outbound_click")
+  .gte("created_at", fromUtc)
+  .lte("created_at", toUtc)
+  .not("visitor_id", "is", null)
+  .not("deal_id", "is", null)
+  .not("page", "like", "/admin%")
+  .not("page", "like", "/api%")
+  .not("user_agent", "ilike", "%bot%");
+
+    if (obErr) throw obErr;
+
+    const outboundUnique = new Set(
+      (outboundPairs || []).map(
+        (r) => `${r.visitor_id}:${r.deal_id}`
+      )
+    );
+
+    // 4️⃣ Deal Clicks (intentional deal page views)
+    const { count: dealClicksCount, error: dcErr } = await supabaseAdmin
+      .from("deal_page_views")
+      .select("id", { count: "exact", head: true })
+      .gte("created_at", fromUtc)
+      .lte("created_at", toUtc);
+
+    if (dcErr) throw dcErr;
+
+    /* ==================================================
+       TOP OUTBOUND CLICKED DEALS (SQL JOIN — FINAL FIX)
+       ================================================== */
+
+    const { data: topOutbound, error: topErr } = await supabaseAdmin
+      .rpc("top_outbound_deals", {
+        from_utc: fromUtc,
+        to_utc: toUtc,
+        row_limit: limit,
+      });
+
+    if (topErr) throw topErr;
+
+    /* ==================================================
+       TOP VIEWED DEALS (EXISTING LOGIC — WORKING)
+       ================================================== */
+
+    const { data: dealViews, error: dvErr } = await supabaseAdmin
+      .from("deal_page_views")
+      .select("deal_id")
+      .gte("created_at", fromUtc)
+      .lte("created_at", toUtc);
+
+    if (dvErr) throw dvErr;
+
+    const dealViewCounts: Record<string, number> = {};
+    for (const r of dealViews || []) {
+      const key = String(r.deal_id);
+      dealViewCounts[key] = (dealViewCounts[key] || 0) + 1;
+    }
+
+    const dealIds = Object.keys(dealViewCounts).map(Number);
+
+    const dealMeta: Record<string, any> = {};
+    if (dealIds.length > 0) {
+      const { data: deals, error: dErr } = await supabaseAdmin
+        .from("deals")
+        .select("id, description, slug, store_name, category")
+        .in("id", dealIds);
+
+      if (dErr) throw dErr;
+
+      for (const d of deals || []) {
+        dealMeta[String(d.id)] = d;
+      }
+    }
+
+    const top_viewed_deals = Object.entries(dealViewCounts)
       .sort((a, b) => b[1] - a[1])
-      .slice(0, 20)
-      .map(([dealId, clicks]) => {
-        const meta = dealMetaMap[dealId] || {};
+      .slice(0, limit)
+      .map(([id, views]) => {
+        const m = dealMeta[id] || {};
         return {
-          deal_id: Number(dealId),
-          clicks,
-          description: meta.description ?? null,
-          store_name: meta.store_name ?? null,
-          category: meta.category ?? null,
-          internal_url: `/deal/${dealId}`, // you only want your own URL
+          deal_id: Number(id),
+          views,
+          description: m.description ?? null,
+          store_name: m.store_name ?? null,
+          category: m.category ?? null,
+          internal_url: m.slug
+            ? `/deals/${id}-${m.slug}`
+            : `/deals/${id}`,
         };
       });
-// --- NEW TECH STATS ---
 
-// --- TECH STATS ---
+const { data: deviceTypeRows } = await supabaseAdmin
+  .from("analytics_human")
+  .select("metadata")
+  .gte("created_at", fromUtc)
+  .lte("created_at", toUtc)
+  .not("metadata->>device_type", "is", null)
+  .not("page", "like", "/admin%")
+  .not("page", "like", "/api%")
+  .not("user_agent", "ilike", "%bot%");
+
+
+
 const device_types: Record<string, number> = {};
+for (const r of deviceTypeRows || []) {
+  const type = r.metadata?.device_type;
+  if (!type) continue;
+  device_types[type] = (device_types[type] || 0) + 1;
+}
+
+
+const { data: osRows } = await supabaseAdmin
+  .from("analytics_human")
+  .select("metadata")
+  .gte("created_at", fromUtc)
+  .lte("created_at", toUtc)
+  .not("metadata->>os", "is", null)
+  .not("page", "like", "/admin%")
+  .not("page", "like", "/api%")
+  .not("user_agent", "ilike", "%bot%");
+
 const operating_systems: Record<string, number> = {};
+for (const r of osRows || []) {
+  const os = r.metadata?.os;
+  if (!os) continue;
+  operating_systems[os] = (operating_systems[os] || 0) + 1;
+}
+
+
+const { data: browserRows } = await supabaseAdmin
+  .from("analytics_human")
+  .select("user_agent")
+  .gte("created_at", fromUtc)
+  .lte("created_at", toUtc)
+  .not("user_agent", "is", null)
+  .not("page", "like", "/admin%")
+  .not("page", "like", "/api%")
+  .not("user_agent", "ilike", "%bot%");
+
+
 const browsers: Record<string, number> = {};
+for (const r of browserRows || []) {
+  const ua = r.user_agent.toLowerCase();
+  let b = "Other";
+  if (ua.includes("edg")) b = "Edge";
+  else if (ua.includes("chrome") && !ua.includes("edg")) b = "Chrome";
+  else if (ua.includes("firefox")) b = "Firefox";
+  else if (ua.includes("safari") && !ua.includes("chrome")) b = "Safari";
+
+  browsers[b] = (browsers[b] || 0) + 1;
+}
+
+
+const { data: screenRows } = await supabaseAdmin
+  .from("analytics_human")
+  .select("metadata")
+  .gte("created_at", fromUtc)
+  .lte("created_at", toUtc)
+  .not("metadata->>screen", "is", null)
+  .not("page", "like", "/admin%")
+  .not("page", "like", "/api%")
+  .not("user_agent", "ilike", "%bot%");
+
 const screen_sizes: Record<string, number> = {};
 
-(events || []).forEach((r: any) => {
-  // Browser (stored in `device`)
-  if (r.device) {
-    const browser = normalizeBrowser(r.device, r.user_agent);
-  browsers[browser] = (browsers[browser] || 0) + 1;
-  }
+for (const r of screenRows || []) {
+  const s = r.metadata?.screen;
+  if (!s) continue;
+  if (!isValidScreenSize(s)) continue;
 
-  const meta = r.metadata || {};
-
-  if (meta.device_type) {
-    device_types[meta.device_type] =
-      (device_types[meta.device_type] || 0) + 1;
-  }
-
-  if (meta.os) {
-    operating_systems[meta.os] =
-      (operating_systems[meta.os] || 0) + 1;
-  }
-
-  if (meta.screen) {
-    screen_sizes[meta.screen] =
-      (screen_sizes[meta.screen] || 0) + 1;
-  }
-});
+  screen_sizes[s] = (screen_sizes[s] || 0) + 1;
+}
 
 
-    /* ======================================================
-       7️⃣ RETURN JSON
-    ====================================================== */
+
+
+    /* ==================================================
+       RESPONSE
+       ================================================== */
+
     return NextResponse.json({
-      total_events: events.length,
+      range: { start: fromUtc, end: toUtc },
 
-      // Visitors
-      unique_visitors: Object.keys(visitorsInRange).length,
-      new_visitors: newVisitors,
-      returning_visitors: returningVisitors,
+      unique_visitors: visitorsCount ?? 0,
+      total_page_views: pageViewsCount ?? 0,
+      total_deal_clicks: dealClicksCount ?? 0,
+      total_outbound_clicks: outboundUnique.size,
+category_ctr_stats: categoryCtrStats ?? [],
 
-      // Activity
-      total_page_views: totalPageViews,
-      total_deal_clicks: totalDealClicks,
-      total_outbound_clicks: totalOutboundClicks,
-
-      // Breakdown
-      page_counts: pageCounts,
-      store_clicks: storeClicks,
-      category_clicks: categoryClicks,
-      deal_clicks: dealClicks,
-
-      // Deals & CTR (Option A)
-      store_deal_counts: storeDealCounts,
-      category_deal_counts: categoryDealCounts,
-      store_ctr: storeCTR,
-      category_ctr: categoryCTR,
-
-      // Top deals
-      top_internal_deals: topInternalDeals,
-      top_outbound_deals: topOutboundDeals,
-      device_types,
+      top_viewed_deals,
+      top_outbound_deals: topOutbound ?? [],
+       store_ctr_stats: storeStats ?? [],
+       device_types,
   operating_systems,
   browsers,
   screen_sizes,
+  category_deal_views,
     });
   } catch (err: any) {
-    console.error("Analytics route error:", err);
-    return NextResponse.json({ error: err.message }, { status: 500 });
+    console.error("Analytics error:", err);
+    return NextResponse.json(
+      { error: err?.message || "Server error" },
+      { status: 500 }
+    );
   }
 }

@@ -160,7 +160,8 @@ export default function AdminAnalytics() {
             const ctr = (ctrRaw * 100).toFixed(1) + "%";
 
             return (
-              <tr key={key} className="border">
+            <tr key={`${key}-${store}`} className="border">
+
                 <td className="p-2 border">{key || "(unknown)"}</td>
                 <td className="p-2 border">{deals}</td>
                 <td className="p-2 border">{clicks}</td>

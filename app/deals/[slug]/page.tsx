@@ -2,29 +2,31 @@
 
 import { notFound } from "next/navigation";
 import { createClient } from "@supabase/supabase-js";
-import DealDetail from "@/components/DealDetail";
 import SiteShell from "@/components/layout/SiteShell";
-
-//import { getDealViewsLastHour } from "@/lib/dealViews";
-
+import DealDetail from "@/components/DealDetail";
 import { getDealViewsTotal } from "@/lib/dealViews";
+import { getRelatedDeals } from "@/lib/getRelatedDeals";
 
-
+/* -------------------------------------------------
+   Supabase (server-side)
+-------------------------------------------------- */
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 );
 
+/* -------------------------------------------------
+   Helpers
+-------------------------------------------------- */
 function extractId(slug: string): number | null {
   const idStr = slug.split("-")[0];
   const id = Number(idStr);
   return Number.isNaN(id) ? null : id;
 }
 
-function getCanonicalDealId(deal: any) {
-  return deal.superseded_by_id || deal.canonical_to_id || deal.id;
-}
-
+/* -------------------------------------------------
+   SEO Metadata
+-------------------------------------------------- */
 export async function generateMetadata(props: {
   params: Promise<{ slug: string }>;
 }) {
@@ -33,7 +35,6 @@ export async function generateMetadata(props: {
   const id = extractId(slug);
   if (!id) return notFound();
 
-  // 1️⃣ Load current deal (full)
   const { data: deal } = await supabase
     .from("deals")
     .select(
@@ -44,11 +45,9 @@ export async function generateMetadata(props: {
 
   if (!deal) return notFound();
 
-  // 2️⃣ Resolve canonical ID
   const canonicalId =
     deal.canonical_to_id ?? deal.superseded_by_id ?? deal.id;
 
-  // 3️⃣ Load canonical deal (MINIMAL SHAPE)
   let canonicalSlug = deal.slug;
   let canonicalSlugEs = deal.slug_es;
 
@@ -66,8 +65,7 @@ export async function generateMetadata(props: {
   }
 
   const baseUrl =
-    process.env.NEXT_PUBLIC_SITE_URL ||
-    "http://localhost:3000";
+    process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
 
   const canonicalUrl = `${baseUrl}/deals/${canonicalId}-${canonicalSlug}`;
   const canonicalEsUrl = canonicalSlugEs
@@ -94,11 +92,16 @@ export async function generateMetadata(props: {
   };
 }
 
-
+/* -------------------------------------------------
+   PAGE COMPONENT
+-------------------------------------------------- */
 export default async function DealPage(props: {
   params: Promise<{ slug: string }>;
+  searchParams?: Promise<Record<string, string | string[] | undefined>>;
 }) {
-  const { slug } = await props.params;
+const { slug } = await props.params;
+const searchParams = await props.searchParams;
+
 
   const id = extractId(slug);
   if (!id) return notFound();
@@ -110,13 +113,34 @@ export default async function DealPage(props: {
     .maybeSingle();
 
   if (!deal) return notFound();
+
 const totalViews = await getDealViewsTotal(deal.id);
 
- return (
- <SiteShell>
-    <DealDetail deal={deal} totalViews={totalViews} />
+// Collect excluded IDs
+const excludeIds: number[] = [];
 
-  </SiteShell>
-);
+// Exclude the previous deal (loop breaker)
+const from = searchParams?.from;
+if (from && !Number.isNaN(Number(from))) {
+  excludeIds.push(Number(from));
+}
 
+const relatedDeals = await getRelatedDeals({
+  dealId: deal.id,
+  category: deal.category,
+  store: deal.store_name,
+  price: deal.price,
+  excludeIds, // ✅ pass data only
+});
+
+
+  return (
+    <SiteShell>
+      <DealDetail
+        deal={deal}
+        totalViews={totalViews}
+        relatedDeals={relatedDeals}
+      />
+    </SiteShell>
+  );
 }
