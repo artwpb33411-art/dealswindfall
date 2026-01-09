@@ -2,15 +2,15 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
 export function middleware(req: NextRequest) {
-  const auth = req.cookies.get("auth");
+  const res = NextResponse.next();
 
-  // Protect /admin routes
-  if (req.nextUrl.pathname.startsWith("/admin") && auth?.value !== "true") {
-    const loginUrl = new URL("/login", req.url);
-    return NextResponse.redirect(loginUrl);
-  }
+  // Example: ensure auth cookie exists
+  // res.cookies.set("admin_checked", "true", {
+  //   httpOnly: true,
+  //   path: "/admin",
+  // });
 
-  return NextResponse.next();
+  return res;
 }
 
 export const config = {
