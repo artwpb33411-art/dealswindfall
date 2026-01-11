@@ -364,7 +364,7 @@ const hasValidDiscount =
   {/* Age warning */}
   {ageLevel === "old" && (
     <p className="text-amber-600">
-      ⚠️ Older deal — availability may have changed
+      ⚠️ Older deal — availability and price may have changed
     </p>
   )}
 </div>
