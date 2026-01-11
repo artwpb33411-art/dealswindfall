@@ -44,6 +44,38 @@ function slugify(text?: string | null) {
   return text.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").substring(0, 120);
 }
 
+function extractHostname(url: string): string | null {
+  try {
+    return new URL(url).hostname.replace(/^www\./, "").toLowerCase();
+  } catch {
+    return null;
+  }
+}
+
+function resolveStoreFromUrl(
+  productUrl: string | null,
+  stores: { store_name: string; store_url: string | null }[]
+): string | null {
+  if (!productUrl) return null;
+
+  const host = extractHostname(productUrl);
+  if (!host) return null;
+
+  for (const store of stores) {
+    if (!store.store_url) continue;
+
+    const domains = store.store_url
+      .split(",")
+      .map(d => d.trim().toLowerCase());
+
+    if (domains.some(d => host.includes(d))) {
+      return store.store_name;
+    }
+  }
+
+  return null;
+}
+
 
 function safeJsonParse(raw: string) {
   return JSON.parse(raw.replace(/```json/gi, "").replace(/```/g, "").trim());
@@ -88,7 +120,7 @@ export async function POST(req: Request) {
 
     const { data: stores } = await supabaseAdmin
       .from("stores")
-      .select("store_name")
+      .select("store_name, store_url")
       .eq("is_active", true);
 
     const { data: categories } = await supabaseAdmin
@@ -107,6 +139,13 @@ export async function POST(req: Request) {
       })
       .join("\n\n");
 
+const resolvedStore =
+  resolveStoreFromUrl(deal.product_link, stores || []) ||
+  deal.store_name ||
+  "Unknown";
+
+      
+
     /* -------- AI Prompt -------- */
 
     const prompt = `
@@ -115,7 +154,7 @@ PRODUCT INFORMATION
 Product title (raw): ${deal.description}
 Current price: ${deal.current_price}
 Old price: ${deal.old_price}
-Store: ${deal.store_name}
+Store: ${resolvedStore}
 Product URL: ${deal.product_link || ""}
 Notes from admin: ${deal.notes || ""}
 
@@ -138,10 +177,17 @@ TASKS
 7. Generate 5–6 relevant hash tags.
 8. Calculate an AI quality score (0–100).
 9. Provide a score breakdown.
+10. If store name is missing, infer the store ONLY by matching the product URL domain
+    against the allowed store list.
+    - Do NOT invent new store names
+    - If no confident match exists, return null
+
+
 
 RESPONSE FORMAT (JSON ONLY)
 ---------------------------
 {
+"store_name": null,
   "title_en": "",
   "body_en": "",
   "title_es": "",
@@ -157,6 +203,7 @@ RESPONSE FORMAT (JSON ONLY)
     "category_relevance": 0,
     "seo_readiness": 0
   }
+    
 }
 `;
 
@@ -185,6 +232,7 @@ const updatePayload = {
   category: parsed.category,
   sub_category: parsed.sub_category,
   hash_tags: parsed.hash_tags,
+store_name: deal.store_name || parsed.store_name,
 
   ...metrics,
 

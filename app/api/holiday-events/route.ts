@@ -18,12 +18,18 @@ export async function GET(req: Request) {
     const url = new URL(req.url);
     const activeOnly = url.searchParams.get("active") === "true";
 
-    let query = supabaseAdmin.from("holiday_events").select("*").order("start_date", {
-      ascending: true,
-    });
+    const today = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+
+    let query = supabaseAdmin
+      .from("holiday_events")
+      .select("*")
+      .order("start_date", { ascending: true });
 
     if (activeOnly) {
-      query = query.eq("is_active", true);
+      query = query
+        .eq("is_active", true)
+        .or(`start_date.is.null,start_date.lte.${today}`)
+        .or(`end_date.is.null,end_date.gte.${today}`);
     }
 
     const { data, error } = await query;

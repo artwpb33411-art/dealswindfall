@@ -9,6 +9,7 @@ import { trackEvent } from "@/lib/trackEvent";
 import useDebounce from "@/hooks/useDebounce";
 import { useLangStore } from "@/lib/languageStore";
 
+
 /* -------------------------------------------------------------
    Supabase
 ------------------------------------------------------------- */
@@ -56,6 +57,8 @@ export default function DealsList({
     noDeals: lang === "en" ? "No deals found." : "Sin ofertas disponibles.",
   };
 
+  
+
   /* -----------------------------------------------------------
      State
   ----------------------------------------------------------- */
@@ -98,13 +101,8 @@ export default function DealsList({
   }
 
   if (selectedHoliday) {
-    query = query.eq(
-      "holiday_tag",
-      selectedHoliday
-        .replace(/-/g, " ")
-        .replace(/\b\w/g, (c: string) => c.toUpperCase())
-    );
-  }
+  query = query.eq("holiday_tag", selectedHoliday);
+}
 
   if (showHotDeals) {
     query = query.gte("percent_diff", 30);
@@ -121,10 +119,19 @@ export default function DealsList({
   return query;
 };
 
+
   /* -----------------------------------------------------------
      Initial load
   ----------------------------------------------------------- */
   useEffect(() => {
+
+console.log("Selected holiday:", selectedHoliday);
+
+deals.forEach(d => {
+  console.log("Deal holiday_tag:", d.holiday_tag);
+});
+
+    
     const loadFirstPage = async () => {
       setLoading(true);
       setPage(0);
@@ -281,6 +288,8 @@ if (!visitorId) {
   if (!deals.length) return <p className="text-center mt-10">{t.noDeals}</p>;
 
   return (
+
+    
     <div
       ref={containerRef}
       className="flex flex-col divide-y divide-gray-200 overflow-y-auto h-full custom-scroll"
