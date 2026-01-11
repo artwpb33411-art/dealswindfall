@@ -17,17 +17,22 @@ export default function Disclaimer() {
       <strong>{lang === "en" ? "Disclaimer:" : "Descargo de responsabilidad:"}</strong>{" "}
       {lang === "en" ? (
         <>
-          We try our best to provide accurate pricing and deal information. Prices, coupons,
-          availability, and stock levels can change anytime on the retailer’s website. Always verify
-          details on the store’s checkout page. We are not responsible for expired or incorrect
-          information.
+          DealsWindfall is an independent deal discovery website and does not sell products directly.
+          Prices, discounts, coupons, availability, and stock levels may change at any time on the
+          retailer’s website. Always verify details on the retailer’s checkout page before making a
+          purchase. DealsWindfall may apply for or participate in affiliate programs and may earn a
+          commission from qualifying purchases at no additional cost to you. We are not responsible
+          for expired, incorrect, or third-party information.
         </>
       ) : (
         <>
-          Hacemos todo lo posible para brindar información precisa sobre precios y ofertas. Los
-          precios, cupones, disponibilidad y niveles de inventario pueden cambiar en cualquier
-          momento en el sitio web del minorista. Siempre verifique los detalles en la página de pago
-          de la tienda. No somos responsables por información vencida o incorrecta.
+          DealsWindfall es un sitio web independiente de descubrimiento de ofertas y no vende
+          productos directamente. Los precios, descuentos, cupones, disponibilidad y niveles de
+          inventario pueden cambiar en cualquier momento en el sitio web del minorista. Siempre
+          verifique los detalles en la página de pago del minorista antes de realizar una compra.
+          DealsWindfall puede solicitar o participar en programas de afiliados y podría recibir una
+          comisión por compras que califiquen sin costo adicional para usted. No somos responsables
+          por información vencida, incorrecta o proporcionada por terceros.
         </>
       )}
     </div>

@@ -1,14 +1,9 @@
 import { createCanvas, loadImage, registerFont } from "canvas";
 import type { SelectedDeal } from "./types";
 import path from "path";
-import fs from "fs";
+
 const WIDTH = 1080;
 const HEIGHT = 1350;
-
-const LOCAL_FALLBACK_IMAGE = path.join(
-  process.cwd(),
-  "lib/social/assets/logo.png"
-);
 
 registerFont(path.join(process.cwd(), "public/fonts/Inter-Regular.ttf"), {
   family: "Inter",
@@ -81,33 +76,28 @@ export async function generateFlyer(deal: SelectedDeal): Promise<Buffer> {
 
   // IMAGE
   const safeUrl =
-  deal.image || "https://www.dealswindfall.com/dealswindfall-logoA.png";
-
+    deal.image_link || "https://www.dealswindfall.com/dealswindfall-logoA.png";
 
   let imageBottom = y + 40;
 
- // let imageBottom = y + 40;
+  try {
+    const img = await loadImage(safeUrl);
 
-try {
-  const img = await loadImage(deal.image ?? LOCAL_FALLBACK_IMAGE);
+    const maxW = 900;
+    const maxH = 550;
+    const ratio = Math.min(maxW / img.width, maxH / img.height);
 
-  const maxW = 900;
-  const maxH = 550;
-  const ratio = Math.min(maxW / img.width, maxH / img.height);
+    const w = img.width * ratio;
+    const h = img.height * ratio;
 
-  const w = img.width * ratio;
-  const h = img.height * ratio;
+    const x = (WIDTH - w) / 2;
+    const imgY = y + 40;
 
-  const x = (WIDTH - w) / 2;
-  const imgY = y + 40;
-
-  ctx.drawImage(img, x, imgY, w, h);
-  imageBottom = imgY + h;
-} catch (err) {
-  console.error("Flyer image load failed:", err);
-  imageBottom = y + 300;
-}
-
+    ctx.drawImage(img, x, imgY, w, h);
+    imageBottom = imgY + h;
+  } catch {
+    imageBottom = y + 300;
+  }
 
   // PRICE BADGE
   const badgeH = 190;

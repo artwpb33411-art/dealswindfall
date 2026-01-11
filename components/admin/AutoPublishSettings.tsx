@@ -22,6 +22,7 @@ const SOCIAL_INTERVAL_OPTIONS = [
   { label: "Every 15 minutes", value: 15 },
   { label: "Every 30 minutes", value: 30 },
   { label: "Every 1 hour", value: 60 },
+  { label: "Every 1.5 hours", value: 90 },
   { label: "Every 2 hours", value: 120 },
   { label: "Every 4 hours", value: 240 },
   { label: "Every 6 hours", value: 360 },
