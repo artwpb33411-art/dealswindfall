@@ -300,56 +300,6 @@ if (!res.ok) {
         {saving ? "Saving..." : "Save Deal"}
       </button>
 
-         {/* Store / Category / Holiday */}
-      <select name="storeName" value={form.storeName} onChange={onChange} className="input">
-        {STORE_TAGS.map(t => <option key={t} value={t}>{t || "Select Store"}</option>)}
-      </select>
-
-      <select name="category" value={form.category} onChange={onChange} className="input">
-        {CAT_TAGS.map(t => <option key={t} value={t}>{t || "Select Category"}</option>)}
-      </select>
-
-      <select name="holidayTag" value={form.holidayTag} onChange={onChange} className="input">
-        {HOLIDAY_TAGS.map(t => <option key={t} value={t}>{t || "No Holiday / Event"}</option>)}
-      </select>
-
-<input
-  name="sub_category"
-  value={form.sub_category}
-  onChange={onChange}
-  placeholder="Sub Category (AI can adjust later)"
-  className="input"
-/>
-
-<input
-  name="hash_tags"
-  value={form.hash_tags}
-  onChange={onChange}
-  placeholder="Hash tags (comma separated, optional)"
-  className="input"
-/>
-
-
-
-
-
-      <input
-  name="asin"
-  value={form.asin}
-  onChange={onChange}
-  placeholder="ASIN (Amazon)"
-  className="input"
-
-  
-/>
-
-<input
-  name="upc"
-  value={form.upc}
-  onChange={onChange}
-  placeholder="UPC / Barcode"
-  className="input"
-/>
 
 <label className="flex items-center gap-2 text-sm">
   <input
@@ -385,19 +335,18 @@ if (!res.ok) {
     </select>
   </>
 )}
+      
+      <select name="holidayTag" value={form.holidayTag} onChange={onChange} className="input">
+        {HOLIDAY_TAGS.map(t => <option key={t} value={t}>{t || "No Holiday / Event"}</option>)}
+      </select>
 
-      <input name="reviewLink" value={form.reviewLink} onChange={onChange} placeholder="Review Link" className="input" />
+
 
       {/* Misc */}
       <input name="couponCode" value={form.couponCode} onChange={onChange} placeholder="Coupon Code" className="input" />
       <input name="shippingCost" value={form.shippingCost} onChange={onChange} placeholder="Shipping Cost" className="input" />
       <input name="expireDate" value={form.expireDate} onChange={onChange} placeholder="Expiry Date (YYYY-MM-DD)" className="input" />
 
-      {/* ES */}
-      <input name="description_es" value={form.description_es} onChange={onChange} placeholder="Título en Español" className="input" />
-      <textarea name="notes_es" value={form.notes_es} onChange={onChange} placeholder="Descripción en Español" rows={3} className="input" />
-
-     
     </form>
 	
 	
