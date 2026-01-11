@@ -74,7 +74,7 @@ export default function DealsList() {
   const [dateFilter, setDateFilter] = useState("");
 
   const [sortField, setSortField] = useState<
-  "id" | "published_at" | "percent_diff" | "current_price" | "store_name"
+  "id" | "published_at" | "percent_diff" | "current_price" | "store_name" | "ai_status"
 >("id");
 
 
@@ -95,6 +95,31 @@ export default function DealsList() {
   /* -------------------------------------------------------------
      Fetch Deals
   ------------------------------------------------------------- */
+const fetchDealById = async (id: number) => {
+  const res = await fetch(`/api/deals?id=${id}`, { cache: "no-store" });
+  const json = await res.json();
+
+  // Normalize possible shapes
+  const data =
+    (json && json.data) ? json.data :
+    (json && json.updated) ? json.updated :
+    json;
+
+  // If API returned a list, pick the row by id
+  const deal = Array.isArray(data)
+    ? data.find((d: any) => Number(d.id) === Number(id))
+    : data;
+
+  if (!deal || Number(deal.id) !== Number(id)) {
+    throw new Error("Deal not found from API response");
+  }
+
+  return deal;
+};
+
+
+
+
 
   const fetchDeals = useCallback(async () => {
     setLoading(true);
@@ -171,35 +196,46 @@ export default function DealsList() {
       )
     );
   };
-
 function renderAIStatus(deal: any) {
   const status = deal.ai_status;
 
-  if (!status || status === "skipped") return <span>—</span>;
+  if (!status || status === "pending") {
+    return <span title="AI pending">⏳</span>;
+  }
 
-  if (status === "pending" || status === "processing") {
+  if (status === "processing") {
     return <span title="AI processing">🤖</span>;
   }
 
-  if (status === "completed" || status === "success") {
-    return <span title="AI completed">✅</span>;
+  if (status === "success") {
+    return <span title={`AI Score: ${deal.ai_score}/100`}>✅</span>;
   }
 
-  if (status === "failed" || status === "error") {
+  if (status === "warning") {
     return (
-      <button
-        onClick={() => retryAIForDeal(deal.id)}
-        title={deal.ai_error || "AI failed — click to retry"}
-        className="text-red-600 hover:text-red-800"
+      <span
+        title={`AI Score: ${deal.ai_score}/100\n${deal.ai_error || ""}`}
+        className="cursor-help"
       >
         ⚠️
-      </button>
+      </span>
+    );
+  }
+
+  if (status === "error") {
+    return <span title={deal.ai_error || "AI error"}>❌</span>;
+  }
+
+  if (status === "overridden") {
+    return (
+      <span title={`AI overridden (Score: ${deal.ai_score}/100)`}>
+        🟦
+      </span>
     );
   }
 
   return <span>—</span>;
 }
-
 
 
   /* -------------------------------------------------------------
@@ -279,10 +315,16 @@ function renderAIStatus(deal: any) {
      Edit + Save
   ------------------------------------------------------------- */
 
-  const handleEdit = (deal: any) => {
-    setEditDeal(deal);
+ const handleEdit = async (deal: any) => {
+  try {
+    const full = await fetchDealById(deal.id);
+    setEditDeal(full);
     setIsModalOpen(true);
-  };
+  } catch (e: any) {
+    alert(e?.message || "Failed to load deal details");
+  }
+};
+
 
   const handleSave = async () => {
   if (!editDeal) return;
@@ -290,13 +332,8 @@ function renderAIStatus(deal: any) {
 
   try {
     // 🔒 If admin edits after AI, lock it as manual
-    const payload = {
-      ...editDeal,
-      ai_status:
-        editDeal.ai_status === "completed"
-          ? "manual"
-          : editDeal.ai_status,
-    };
+    const payload = { ...editDeal };
+
 
     const res = await fetch("/api/deals", {
       method: "PUT",
@@ -321,56 +358,38 @@ function renderAIStatus(deal: any) {
 };
 
 
-  /* -------------------------------------------------------------
-     AI Regenerate (inside modal)
-  ------------------------------------------------------------- */
+ /* -------------------------------------------------------------
+   AI Regenerate (inside modal)
+------------------------------------------------------------- */
+
 const handleRegenerateAI = async () => {
   if (!editDeal) return;
 
   setAiUpdating(true);
 
   try {
-    const res = await fetch("/api/ai-generate-seo", {
+    const res = await fetch("/api/ai/process-deal", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        title: editDeal.description,
-        notes: editDeal.notes,
-        category: editDeal.category,
-        storeName: editDeal.store_name,
-        currentPrice: editDeal.current_price,
-        oldPrice: editDeal.old_price,
-        shippingCost: editDeal.shipping_cost,
-        couponCode: editDeal.coupon_code,
-        holidayTag: editDeal.holiday_tag,
-        productLink: editDeal.product_link,
+        dealId: editDeal.id,
+        preview: true,
+        force: true,
       }),
     });
 
     const data = await res.json();
+    if (!res.ok) throw new Error(data.error || "AI regeneration failed");
 
-    setEditDeal((prev: any) => ({
-      ...prev,
-      description: data.title_en || prev.description,
-      notes: data.description_en || prev.notes,
-      description_es: data.title_es || prev.description_es,
-      notes_es: data.description_es || prev.notes_es,
-      ai_status: "success",
-
-    //   ai_status: "success",
-  ai_error: null,
-  ai_generated_at: new Date().toISOString(),
-    }));
+    if (data.suggested) {
+      setEditDeal((prev: any) => ({
+        ...prev,
+        ...data.suggested, // ✅ APPLY AI CONTENT
+      }));
+    }
   } catch (err: any) {
-  setEditDeal((prev: any) => ({
-    ...prev,
-    ai_status: "error",
-    ai_error: err?.message || "AI generation failed",
-  }));
-
-  alert("AI generation failed");
-}
- finally {
+    alert(err?.message || "AI regeneration failed");
+  } finally {
     setAiUpdating(false);
   }
 };
@@ -379,6 +398,16 @@ const handleRegenerateAI = async () => {
   /* -------------------------------------------------------------
      Filtering & Sorting
   ------------------------------------------------------------- */
+const AI_STATUS_PRIORITY: Record<string, number> = {
+  error: 0,
+  warning: 1,
+  pending: 2,
+  processing: 2,
+  success: 3,
+  overridden: 4,
+  manual: 5,
+  skipped: 6,
+};
 
   const filteredDeals = useMemo(() => {
     const q = search.toLowerCase().trim();
@@ -400,25 +429,34 @@ const handleRegenerateAI = async () => {
       return matchText && matchStore && matchCategory && matchDate;
     });
 
-    result.sort((a, b) => {
-      const A = a[sortField];
-      const B = b[sortField];
-      if (A == null || B == null) return 0;
+  result.sort((a, b) => {
+  if (sortField === "ai_status") {
+    const A = AI_STATUS_PRIORITY[a.ai_status ?? "pending"] ?? 99;
+    const B = AI_STATUS_PRIORITY[b.ai_status ?? "pending"] ?? 99;
 
-      if (sortField === "published_at") {
-        return sortOrder === "asc"
-          ? new Date(A).getTime() - new Date(B).getTime()
-          : new Date(B).getTime() - new Date(A).getTime();
-      }
+    return sortOrder === "asc" ? A - B : B - A;
+  }
 
-      if (typeof A === "number" && typeof B === "number") {
-        return sortOrder === "asc" ? A - B : B - A;
-      }
+  // existing logic
+  const A = a[sortField];
+  const B = b[sortField];
+  if (A == null || B == null) return 0;
 
-      return sortOrder === "asc"
-        ? String(A).localeCompare(String(B))
-        : String(B).localeCompare(String(A));
-    });
+  if (sortField === "published_at") {
+    return sortOrder === "asc"
+      ? new Date(A).getTime() - new Date(B).getTime()
+      : new Date(B).getTime() - new Date(A).getTime();
+  }
+
+  if (typeof A === "number" && typeof B === "number") {
+    return sortOrder === "asc" ? A - B : B - A;
+  }
+
+  return sortOrder === "asc"
+    ? String(A).localeCompare(String(B))
+    : String(B).localeCompare(String(A));
+});
+
 
     return result;
   }, [
@@ -473,6 +511,7 @@ const handleRegenerateAI = async () => {
           >
             Refresh
           </button>
+          
         </div>
       </div>
 
@@ -524,6 +563,7 @@ const handleRegenerateAI = async () => {
           <option value="percent_diff">Discount %</option>
           <option value="current_price">Current Price</option>
           <option value="store_name">Store</option>
+           <option value="ai_status">AI Status (Needs Review)</option>
         </select>
 
         <select
@@ -663,16 +703,20 @@ const handleRegenerateAI = async () => {
       )}
 
       {/* Edit Modal */}
-     {isModalOpen && editDeal && (
+    
+
+      {/* Edit Modal */}
+    {isModalOpen && editDeal && (
   <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-40 z-50">
     <div className="bg-white rounded-lg shadow-lg w-full max-w-5xl p-6 relative">
+
       {/* Header */}
       <div className="flex justify-between items-center mb-4">
         <h3 className="text-lg font-semibold">Edit Deal</h3>
         <button
           onClick={handleRegenerateAI}
           disabled={aiUpdating}
-          className="px-3 py-1 text-sm bg-purple-600 text-white rounded hover:bg-purple-700 disabled:opacity-50"
+          className="px-3 py-1 text-sm bg-purple-600 text-white rounded"
         >
           {aiUpdating ? "AI Generating..." : "🤖 Regenerate AI"}
         </button>
@@ -742,6 +786,33 @@ const handleRegenerateAI = async () => {
             setEditDeal({ ...editDeal, store_name: e.target.value })
           }
         />
+
+        <input
+  className="border p-2 rounded"
+  placeholder="Sub Category (AI generated, editable)"
+  value={editDeal.sub_category || ""}
+  onChange={e =>
+    setEditDeal({
+      ...editDeal,
+      sub_category: e.target.value,
+    })
+  }
+/>
+<input
+  className="border p-2 rounded"
+  placeholder="Hash tags (comma separated)"
+  value={(editDeal.hash_tags || []).join(", ")}
+  onChange={e =>
+    setEditDeal({
+      ...editDeal,
+      hash_tags: e.target.value
+        .split(",")
+        .map(t => t.trim())
+        .filter(Boolean),
+    })
+  }
+/>
+
         <input
           className="border p-2 rounded"
           placeholder="Category"
@@ -823,26 +894,72 @@ const handleRegenerateAI = async () => {
        
       </div>
 
-      {/* Footer */}
+      {/* ⚠️ AI Warning + Breakdown (MUST be here) */}
+      {(editDeal.ai_status === "warning" || editDeal.ai_status === "overridden") && (
+        <div className="border border-yellow-300 bg-yellow-50 p-3 rounded text-sm mt-4">
+          <div className="font-medium text-yellow-800">
+            ⚠️ AI Score: {editDeal.ai_score}/100
+          </div>
+
+          {editDeal.ai_error && (
+            <div className="text-yellow-700 mt-1">
+              Reason: {editDeal.ai_error}
+            </div>
+          )}
+
+          {editDeal.ai_status === "warning" && (
+            <label className="flex items-center gap-2 mt-2">
+              <input
+                type="checkbox"
+                onChange={() =>
+                  setEditDeal({
+                    ...editDeal,
+                    ai_status: "overridden",
+                    ai_error: null,
+                  })
+                }
+              />
+              I understand and approve publishing this deal
+            </label>
+          )}
+
+          {editDeal.ai_score_breakdown && (
+            <div className="border rounded p-3 text-xs bg-gray-50 mt-3">
+              <div className="font-medium mb-1">AI Score Breakdown</div>
+              <ul className="space-y-0.5">
+                <li>Completeness: {editDeal.ai_score_breakdown.completeness}/25</li>
+                <li>Clarity: {editDeal.ai_score_breakdown.clarity}/20</li>
+                <li>Deal Strength: {editDeal.ai_score_breakdown.deal_strength}/20</li>
+                <li>Category Relevance: {editDeal.ai_score_breakdown.category_relevance}/15</li>
+                <li>SEO Readiness: {editDeal.ai_score_breakdown.seo_readiness}/20</li>
+              </ul>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Footer (ONLY buttons here) */}
       <div className="flex justify-end gap-2 mt-5">
         <button
           onClick={() => setIsModalOpen(false)}
-          className="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300"
+          className="px-4 py-2 bg-gray-200 rounded"
         >
           Cancel
         </button>
         <button
           onClick={handleSave}
           disabled={saving || aiUpdating}
-          className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50"
+          className="px-4 py-2 bg-blue-600 text-white rounded"
         >
           {saving ? "Saving..." : "Save Changes"}
         </button>
       </div>
+
     </div>
   </div>
 )}
-
     </div>
+
+    
   );
 }

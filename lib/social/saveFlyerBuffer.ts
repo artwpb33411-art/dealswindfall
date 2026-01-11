@@ -1,36 +1,40 @@
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
-import { randomUUID } from "crypto";
 
-const FLYER_BUCKET =
-  process.env.SUPABASE_FLYER_BUCKET || "social-temp"; // create this bucket in Supabase
+export type StoredFlyer = {
+  bucket: string;
+  path: string;
+  publicUrl: string;
+};
 
-/**
- * Save a flyer Buffer (JPEG) to Supabase Storage and return a public URL.
- */
 export async function saveFlyerBufferToSupabase(
   buffer: Buffer,
-  ext: "jpg" | "jpeg" = "jpg"
-): Promise<string> {
-  const id = randomUUID();
-  const path = `flyers/${id}.${ext}`;
+  ext: "jpg" | "png" = "jpg"
+): Promise<StoredFlyer> {
+  const bucket = "social-temp";
+  const path = `flyers/${Date.now()}-${Math.random()
+    .toString(16)
+    .slice(2)}.${ext}`;
 
   const { error: uploadError } = await supabaseAdmin.storage
-    .from(FLYER_BUCKET)
+    .from(bucket)
     .upload(path, buffer, {
-      contentType: "image/jpeg",
+      contentType: ext === "jpg" ? "image/jpeg" : "image/png",
       upsert: false,
     });
 
   if (uploadError) {
-    console.error("Supabase flyer upload error:", uploadError);
     throw uploadError;
   }
 
-  const { data } = supabaseAdmin.storage.from(FLYER_BUCKET).getPublicUrl(path);
+  const { data } = supabaseAdmin.storage.from(bucket).getPublicUrl(path);
 
   if (!data?.publicUrl) {
-    throw new Error("Could not get public URL for flyer");
+    throw new Error("Failed to generate public URL for flyer");
   }
 
-  return data.publicUrl;
+  return {
+    bucket,
+    path,
+    publicUrl: data.publicUrl,
+  };
 }

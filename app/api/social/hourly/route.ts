@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { saveFlyerBufferToSupabase } from "@/lib/social/saveFlyerBuffer"; 
-
+import { deleteStorageObject } from "@/lib/social/deleteStorageObject";
+import { safeGenerateFlyers } from "@/lib/social/safeGenerateFlyers";
 import type { SelectedDeal } from "@/lib/social/types";
 import { buildCaption } from "@/lib/social/captionBuilder";
 
@@ -15,36 +16,42 @@ import { publishToFacebook } from "@/lib/social/publishers/facebook";
 import { publishToInstagram } from "@/lib/social/publishers/instagram";
 
 import { saveImageToSupabase } from "@/lib/social/saveImage";
-/*
-// Weighted pick by percent_diff (bigger discount => higher chance)
-function weightedRandom(deals: any[]) {
-  const total = deals.reduce(
-    (sum, d) => sum + Math.max(d.percent_diff ?? 1, 1),
-    0
-  );
 
-  let r = Math.random() * total;
-  for (const d of deals) {
-    const w = Math.max(d.percent_diff ?? 1, 1);
-    if (r < w) return d;
-    r -= w;
+export const runtime = "nodejs";
+
+
+function isInQuietHours(
+  hour: number,
+  start: number,
+  end: number
+): boolean {
+  if (start === end) return false; // disabled
+  if (start < end) {
+    return hour >= start && hour < end;
   }
-  return deals[0];
+  // wraps midnight (e.g. 22 → 6)
+  return hour >= start || hour < end;
 }
 
+function normalizeHashtags(
+  tags: string[] | string | null | undefined
+): string[] {
+  if (!tags) return [];
 
-function pickRandomDeal(deals: any[]) {
-  // 1. Remove deals with >= 60% discount
-  const filtered = deals.filter(d => (d.percent_diff ?? 0) < 60);
+  let list: string[] = [];
 
-  // 2. If filtering removes everything, fallback to original list
-  const pool = filtered.length > 0 ? filtered : deals;
+  if (Array.isArray(tags)) {
+    list = tags;
+  } else {
+    list = tags.split(",");
+  }
 
-  // 3. Random selection from remaining
-  return pool[Math.floor(Math.random() * pool.length)];
+  return list
+    .map(t => t.trim())
+    .filter(Boolean)
+    .map(t => (t.startsWith("#") ? t : `#${t}`));
 }
 
-*/
 
 export async function POST(req: Request) {
   const CRON_SECRET =
@@ -168,11 +175,45 @@ export async function POST(req: Request) {
 
     console.log("Allowed stores for social:", allowedStores);
 
-    // 6️⃣ Fetch candidate deals (last 12 hours)
-   // 6️⃣ Fetch candidate deals (last 12 hours)
+// 🌙 Quiet hours check (CRON only)
+if (isCronCall) {
+  const estHour = Number(
+    new Intl.DateTimeFormat("en-US", {
+      timeZone: "America/New_York",
+      hour: "2-digit",
+      hour12: false,
+    }).format(now)
+  );
+
+  const quietStart = settings.social_quiet_start_hour ?? 1;
+  const quietEnd = settings.social_quiet_end_hour ?? 5;
+
+  if (isInQuietHours(estHour, quietStart, quietEnd)) {
+    console.log(
+      `🌙 Quiet hours active (EST ${quietStart}:00–${quietEnd}:00). Skipping.`
+    );
+
+    await supabaseAdmin.from("auto_publish_logs").insert({
+      run_time: now.toISOString(),
+      action: "social_skip",
+      deals_published: 0,
+      message: `Quiet hours active. EST hour=${estHour}`,
+    });
+
+    return NextResponse.json({
+      skipped: true,
+      reason: "quiet_hours",
+      estHour,
+    });
+  }
+}
+
+
+ 
+// 6️⃣ Fetch candidate deals (last 12 hours)
 const since = new Date(now.getTime() - 12 * 60 * 60 * 1000).toISOString();
 
-const { data: rawDeals, error: dealsError } = await supabaseAdmin
+const baseQuery = supabaseAdmin
   .from("deals")
   .select(
     `
@@ -189,17 +230,47 @@ const { data: rawDeals, error: dealsError } = await supabaseAdmin
     store_name,
     slug,
     published_at,
-    exclude_from_auto
-  `
+    exclude_from_auto,
+    is_affiliate,
+    hash_tags
+    `
   )
   .eq("status", "Published")
   .eq("exclude_from_auto", false)
   .in("store_name", allowedStores)
-  .gte("published_at", since)
-  .order("published_at", { ascending: false })
-  .limit(100);
+  .gte("published_at", since);
 
-if (dealsError) throw dealsError;
+let rawDeals: any[] | null = null;
+
+// 1️⃣ Try affiliate deals first (if enabled)
+if (settings.social_affiliate_only) {
+  const { data: affiliateDeals, error } = await baseQuery
+    .eq("is_affiliate", true)
+    .order("published_at", { ascending: false })
+    .limit(100);
+
+  if (error) throw error;
+
+  if (affiliateDeals && affiliateDeals.length > 0) {
+    rawDeals = affiliateDeals;
+    console.log("💰 Using affiliate-preferred deals");
+  } else {
+    console.log(
+      "ℹ️ No affiliate deals found. Falling back to all deals."
+    );
+  }
+}
+
+// 2️⃣ Fallback to all deals
+if (!rawDeals) {
+  const { data: allDeals, error } = await baseQuery
+    .order("published_at", { ascending: false })
+    .limit(100);
+
+  if (error) throw error;
+
+  rawDeals = allDeals;
+}
 
 // If literally no deals, same as before
 if (!rawDeals || rawDeals.length === 0) {
@@ -233,15 +304,35 @@ if (!rawDeals || rawDeals.length === 0) {
   return NextResponse.json({ skipped: true, reason: "no deals" });
 }
 
-// 6.1 Remove *last posted* deal (no immediate duplicates)
-let available = rawDeals.filter(
-  (d: any) => d.id !== state.social_last_deal
+// 6.A️⃣ Exclude deals posted recently (hard dedupe)
+const DEDUPE_HOURS = 36;
+const dedupeSince = new Date(
+  now.getTime() - DEDUPE_HOURS * 60 * 60 * 1000
+).toISOString();
+
+const { data: recentPosts, error: recentErr } = await supabaseAdmin
+  .from("social_post_log")
+  .select("deal_id")
+  .gte("posted_at", dedupeSince);
+
+if (recentErr) throw recentErr;
+
+const recentlyPostedIds = new Set(
+  (recentPosts ?? []).map((r: any) => r.deal_id)
 );
 
-// 6.2 Filter out suspicious huge discounts (>= 60%)
-available = available.filter(
-  (d: any) => (d.percent_diff ?? 0) < 60
-);
+
+// 6.1 Remove *last posted* deal (no immediate duplicates)
+let available = rawDeals
+  // Safety net: last deal
+  .filter((d: any) => d.id !== state.social_last_deal)
+
+  // Hard dedupe: recently posted
+  .filter((d: any) => !recentlyPostedIds.has(d.id))
+
+  // Discount sanity check
+  .filter((d: any) => (d.percent_diff ?? 0) < 60);
+
 
 // 6.3 If no qualified deals → DO NOT POST AT ALL (option A for now)
 if (available.length === 0) {
@@ -333,104 +424,122 @@ if (available.length === 0) {
 
     // 9️⃣ Generate flyers
     console.log("🖨 Generating flyers...");
-/*
-    const flyerPortrait = await generateFlyer({
-      ...deal,
-      image_link: finalImage,
-    });
 
-    const flyerSquare = await generateFlyerSquare({
-      ...deal,
-      image_link: finalImage,
-    });
 
-    const flyerStory = await generateFlyerStory({
-      ...deal,
-      image_link: finalImage,
-    });
-
-    const portraitBase64 = flyerPortrait.toString("base64");
-    const squareBase64 = flyerSquare.toString("base64");
-    const storyBase64 = flyerStory.toString("base64"); // for future (stories)
-*/
 
 
 // 9️⃣ Generate flyers — ensure JPEG output
 console.log("🖨 Generating flyers...");
 
-const flyerPortrait = await generateFlyer({
-  ...deal,
-  image_link: finalImage,
-}); // should return a JPEG buffer
+const flyers = await safeGenerateFlyers(deal, finalImage);
 
-const flyerSquare = await generateFlyerSquare({
-  ...deal,
-  image_link: finalImage,
-});
+const portraitBuffer = flyers.portrait;
+const squareBuffer = flyers.square;
+const storyBuffer = flyers.story;
 
-const flyerStory = await generateFlyerStory({
-  ...deal,
-  image_link: finalImage,
-});
+const { portrait, square, story } =
+  await safeGenerateFlyers(deal, finalImage);
 
-// Buffers are ready for upload or base64 convert
-const portraitBuffer = flyerPortrait;
-const squareBuffer = flyerSquare;
-const storyBuffer = flyerStory;
-
-const portraitBase64 = portraitBuffer.toString("base64");
-const squareBase64 = squareBuffer.toString("base64");
-const storyBase64 = storyBuffer.toString("base64");
-
+const portraitBase64 = portrait.toString("base64");
+const squareBase64 = square.toString("base64");
+const storyBase64 = story.toString("base64");
 
 
 
     // 🔟 Build captions (long + short + URL)
-    const social = buildCaption(deal);
+
+const aiHashtags = normalizeHashtags(raw.hash_tags);
+
+// Always include brand hashtag
+const finalHashtags = Array.from(
+  new Set([
+    "#dealswindfall",
+    ...aiHashtags,
+  ])
+);
+
+
+   const social = buildCaption(deal, aiHashtags);
+
 
     // 🔟 Post to platforms
     const results: Record<string, any> = {};
     const platformsPosted: string[] = [];
 
-    async function tryPost(name: string, fn: () => Promise<any>) {
-      try {
-        const res = await fn();
-        console.log(`✅ Posted to ${name}`);
-        results[name] = res;
-        platformsPosted.push(name);
-      } catch (err) {
-        console.error(`❌ ${name.toUpperCase()} ERROR:`, err);
-        results[name] = { error: String(err) };
-      }
-    }
+   async function tryPost(
+  platform: string,
+  fn: () => Promise<any>
+) {
+  try {
+    const res = await fn();
+    console.log(`✅ Posted to ${platform}`);
+    results[platform] = res;
+    platformsPosted.push(platform);
 
-    if (platforms.x) {
-      // X prefers shorter caption
-      await tryPost("x", () => publishToX(social.short, squareBase64));
-    }
+    await supabaseAdmin.from("social_post_log").insert({
+      deal_id: deal.id,
+      platform,
+      status: "success",
+    });
 
-    if (platforms.telegram) {
-      // Telegram can use long caption
-      await tryPost("telegram", () =>
-        publishToTelegram(social.text, squareBase64)
-      );
-    }
+    return res;
+  } catch (err) {
+    console.error(`❌ ${platform.toUpperCase()} ERROR:`, err);
+    results[platform] = { error: String(err) };
 
-    if (platforms.facebook) {
-      await tryPost("facebook", () =>
-        publishToFacebook(social.text, portraitBase64)
-      );
-    }
+    await supabaseAdmin.from("social_post_log").insert({
+      deal_id: deal.id,
+      platform,
+      status: "failed",
+      error: String(err),
+    });
 
-    if (platforms.instagram) {
+    throw err;
+  }
+}
+
+// 🔟.5️⃣ Publish to enabled platforms
+
+if (platforms.x) {
+  await tryPost("x", () =>
+    publishToX(social.short, squareBase64)
+  );
+}
+
+if (platforms.telegram) {
+  await tryPost("telegram", () =>
+    publishToTelegram(social.text, squareBase64)
+  );
+}
+
+if (platforms.facebook) {
+  await tryPost("facebook", () =>
+    publishToFacebook(social.text, portraitBase64)
+  );
+}
+
+if (platforms.instagram) {
   await tryPost("instagram", async () => {
-    // Upload JPEG flyer to Supabase → get public URL
-    const igImageUrl = await saveFlyerBufferToSupabase(portraitBuffer, "jpg");
+    const stored = await saveFlyerBufferToSupabase(portraitBuffer, "jpg");
 
-    // Publish using new Instagram API code
-    return publishToInstagram(social.text, igImageUrl);
+    try {
+      const res = await publishToInstagram(
+        social.text,
+        stored.publicUrl
+      );
+
+      // ✅ cleanup after successful publish
+      await deleteStorageObject(stored.bucket, stored.path);
+
+      return res;
+    } catch (err) {
+      // ❌ keep file if publish fails
+      throw err;
+    }
   });
 }
+
+
 
 
     // 1️⃣1️⃣ Update scheduler state (CRON and manual both)

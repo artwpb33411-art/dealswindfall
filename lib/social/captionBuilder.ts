@@ -17,32 +17,65 @@ function trimTo(str: string, max: number) {
   return str.length > max ? str.slice(0, max - 3) + "..." : str;
 }
 
-export function buildCaption(deal: SelectedDeal): SocialContent {
-  const price = deal.price != null ? `$${Number(deal.price).toFixed(2)}` : "Great price";
+export function buildCaption(
+  deal: SelectedDeal,
+  hashtags: string[] = []
+): SocialContent {
+  const price =
+    deal.price != null
+      ? `$${Number(deal.price).toFixed(2)}`
+      : "Great price";
 
   const discount =
-    deal.percent_diff != null ? ` (${deal.percent_diff}% OFF)` : "";
+    deal.percent_diff != null
+      ? ` (${deal.percent_diff}% OFF)`
+      : "";
 
-  const store = deal.store_name ? ` at ${deal.store_name}` : "";
+  const store =
+    deal.store_name ? ` at ${deal.store_name}` : "";
 
   const url = `https://www.dealswindfall.com/deals/${deal.id}-${deal.slug}`;
 
+  // -----------------------
+  // Normalize & finalize hashtags
+  // -----------------------
+  const finalHashtags = Array.from(
+    new Set(
+      ["#dealswindfall", ...hashtags]
+        .map(t => t.trim())
+        .filter(Boolean)
+        .map(t => (t.startsWith("#") ? t : `#${t}`))
+        .map(t => t.toLowerCase())
+    )
+  );
+
+  const hashtagText =
+    finalHashtags.length > 0
+      ? `\n\n${finalHashtags.join(" ")}`
+      : "";
+
+  // -----------------------
+  // Captions
+  // -----------------------
   const longCaptionRaw = `
 🔥 Deal Alert: ${deal.title}
 
 ${price}${discount}${store}
 
 👇 Grab it now:
-${url}
-
-#DealsWindfall #Deals #SaveMoney #Offers #Coupons
+${url}${hashtagText}
 `.trim();
 
   const shortRaw = `${deal.title} — ${price}${discount}${store}. Grab it now: ${url}`;
 
   return {
     text: escapeHtml(longCaptionRaw),
-    short: trimTo(shortRaw, 250),
+    short: trimTo(
+      finalHashtags.length > 0
+        ? `${shortRaw} ${finalHashtags.join(" ")}`
+        : shortRaw,
+      250
+    ),
     url,
   };
 }

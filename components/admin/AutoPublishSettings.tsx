@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import ManualSocialPosting from "@/components/admin/ManualSocialPosting";
 
 const DEAL_INTERVAL_OPTIONS = [
    { label: "Every 1 minutes", value: 1 },
@@ -60,6 +61,7 @@ export default function AutoPublishSettings() {
     social_enabled: true,
     social_interval_minutes: 60,
     allowed_stores: ["Amazon", "Walmart"],
+    social_affiliate_only: false, // 👈 add this
   });
 
   // LOAD SETTINGS  
@@ -125,6 +127,10 @@ export default function AutoPublishSettings() {
   }
 
   return (
+
+    <div className="mt-6 grid grid-cols-1 xl:grid-cols-2 gap-6 items-stretch">
+<div className="h-full">
+
     <div className="p-6 bg-white border rounded shadow mt-6">
       <h2 className="text-2xl font-semibold text-blue-600 mb-4">
         Auto-Publish Settings
@@ -185,7 +191,8 @@ export default function AutoPublishSettings() {
             setSettings({ ...settings, social_enabled: e.target.checked })
           }
         />
-        <span className="font-medium">Enable Social Auto-Posting</span>
+        <span className="font-medium">Turns social auto-posting completely on or off.
+  Quiet Hours and scheduling still apply when enabled.</span>
       </label>
 
       {/* SOCIAL INTERVAL */}
@@ -209,6 +216,30 @@ export default function AutoPublishSettings() {
             </option>
           ))}
         </select>
+
+<label className="flex items-center gap-3 mb-1 ml-6">
+  <input
+    type="checkbox"
+    checked={settings.social_affiliate_only}
+    onChange={(e) =>
+      setSettings({
+        ...settings,
+        social_affiliate_only: e.target.checked,
+      })
+    }
+  />
+  <span className="text-sm font-medium">
+    Post only affiliate deals
+  </span>
+</label>
+
+<p className="text-sm text-gray-500 ml-12 mb-4">
+  When enabled, social auto-posting will only publish deals
+  with affiliate links.
+</p>
+
+
+
       </div>
 
       {/* STORE PICKER */}
@@ -235,6 +266,31 @@ export default function AutoPublishSettings() {
       >
         {saving ? "Saving..." : "Save Settings"}
       </button>
+    </div></div>
+ {/* RIGHT COLUMN — Manual Posting */}
+<div className="h-full p-6 bg-white border rounded shadow">
+    <h2 className="text-2xl font-semibold text-blue-600 mb-4">
+      Manual Social Posting
+    </h2>
+
+    <p className="text-sm text-gray-600 mb-4">
+      Manually post a selected deal to social platforms.
+      This bypasses scheduling and quiet hours.
+    </p>
+
+    {/* Placeholder for now */}
+    <div className="text-gray-400 italic">
+      <ManualSocialPosting />
     </div>
+  </div>
+</div>
+
+
+
+
+
+
+
+
   );
 }

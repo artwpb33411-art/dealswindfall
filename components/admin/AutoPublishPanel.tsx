@@ -11,7 +11,18 @@ import {
   Settings2,
 } from "lucide-react";
 
+
+
+//const [quietStart, setQuietStart] = useState<number | null>(null);
+//const [quietEnd, setQuietEnd] = useState<number | null>(null);
+//const [savingQuiet, setSavingQuiet] = useState(false);
+
+
 export default function AutoPublishPanel() {
+
+  const [quietStart, setQuietStart] = useState<number | null>(null);
+  const [quietEnd, setQuietEnd] = useState<number | null>(null);
+  const [savingQuiet, setSavingQuiet] = useState(false);
   const [status, setStatus] = useState<any>(null);
   const [loadingStatus, setLoadingStatus] = useState(true);
 
@@ -35,6 +46,21 @@ export default function AutoPublishPanel() {
   // -----------------------
   // Load scheduler state
   // -----------------------
+
+useEffect(() => {
+  async function loadQuietHours() {
+    const res = await fetch("/api/auto-publish-settings");
+    const data = await res.json();
+
+    setQuietStart(data.social_quiet_start_hour ?? 1);
+    setQuietEnd(data.social_quiet_end_hour ?? 5);
+  }
+
+  loadQuietHours();
+}, []);
+
+
+
   async function loadStatus() {
     try {
       const res = await fetch("/api/auto-publish-status");
@@ -100,6 +126,34 @@ export default function AutoPublishPanel() {
     setTimeout(() => setActionMessage(""), 4000);
   }
 
+  async function saveQuietHours() {
+  if (quietStart === null || quietEnd === null) return;
+
+  setSavingQuiet(true);
+  try {
+    const res = await fetch("/api/auto-publish-settings", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        social_quiet_start_hour: quietStart,
+        social_quiet_end_hour: quietEnd,
+      }),
+    });
+
+    if (res.ok) {
+      setActionMessage("🌙 Quiet hours updated");
+    } else {
+      setActionMessage("✖ Failed to update quiet hours");
+    }
+  } catch {
+    setActionMessage("✖ Failed to update quiet hours");
+  } finally {
+    setSavingQuiet(false);
+    setTimeout(() => setActionMessage(""), 4000);
+  }
+}
+
+
   return (
     <div className="space-y-8">
       {actionMessage && (
@@ -155,6 +209,68 @@ export default function AutoPublishPanel() {
           </div>
         )}
       </div>
+
+{/* ---------------------------
+   QUIET HOURS (EST)
+---------------------------- */}
+<div className="p-6 bg-white rounded-lg shadow border">
+  <h2 className="text-xl font-semibold text-blue-700 mb-4 flex items-center gap-2">
+    <Clock className="w-5 h-5" />
+    Quiet Hours (EST)
+  </h2>
+
+ <p className="text-sm text-gray-600 mb-4">
+  Auto social posting will be paused during this time (EST).
+  <br />
+  <strong>To disable quiet hours, set Start and End to the same hour.</strong>
+</p>
+
+
+  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-md">
+    <div>
+      <label className="block text-sm font-medium mb-1">
+        Start Hour
+      </label>
+      <select
+        value={quietStart ?? ""}
+        onChange={(e) => setQuietStart(Number(e.target.value))}
+        className="w-full border rounded px-3 py-2"
+      >
+        {Array.from({ length: 24 }).map((_, i) => (
+          <option key={i} value={i}>
+            {i}:00
+          </option>
+        ))}
+      </select>
+    </div>
+
+    <div>
+      <label className="block text-sm font-medium mb-1">
+        End Hour
+      </label>
+      <select
+        value={quietEnd ?? ""}
+        onChange={(e) => setQuietEnd(Number(e.target.value))}
+        className="w-full border rounded px-3 py-2"
+      >
+        {Array.from({ length: 24 }).map((_, i) => (
+          <option key={i} value={i}>
+            {i}:00
+          </option>
+        ))}
+      </select>
+    </div>
+  </div>
+
+  <button
+    disabled={savingQuiet}
+    onClick={saveQuietHours}
+    className="mt-5 px-5 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50"
+  >
+    {savingQuiet ? "Saving..." : "Save Quiet Hours"}
+  </button>
+</div>
+
 
       {/* ---------------------------
          PLATFORM SETTINGS

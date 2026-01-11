@@ -53,6 +53,9 @@ const DEFAULT_FORM = {
   is_affiliate: false,
   affiliate_source: "",
   affiliate_priority: 0,
+  sub_category: "",
+hash_tags: "",
+
 };
 
 /* -------------------------------------------------------------
@@ -281,18 +284,7 @@ if (!res.ok) {
         <input name="oldPrice" value={form.oldPrice} onChange={onChange} placeholder="Old Price" className="input" />
       </div>
 
-      {/* Store / Category / Holiday */}
-      <select name="storeName" value={form.storeName} onChange={onChange} className="input">
-        {STORE_TAGS.map(t => <option key={t} value={t}>{t || "Select Store"}</option>)}
-      </select>
-
-      <select name="category" value={form.category} onChange={onChange} className="input">
-        {CAT_TAGS.map(t => <option key={t} value={t}>{t || "Select Category"}</option>)}
-      </select>
-
-      <select name="holidayTag" value={form.holidayTag} onChange={onChange} className="input">
-        {HOLIDAY_TAGS.map(t => <option key={t} value={t}>{t || "No Holiday / Event"}</option>)}
-      </select>
+   
 
       {/* Links */}
       <input name="imageLink" value={form.imageLink} onChange={onChange} placeholder="Image Link" className="input" />
@@ -307,6 +299,39 @@ if (!res.ok) {
       <button type="submit" disabled={saving} className="w-full bg-blue-600 text-white p-2 rounded">
         {saving ? "Saving..." : "Save Deal"}
       </button>
+
+         {/* Store / Category / Holiday */}
+      <select name="storeName" value={form.storeName} onChange={onChange} className="input">
+        {STORE_TAGS.map(t => <option key={t} value={t}>{t || "Select Store"}</option>)}
+      </select>
+
+      <select name="category" value={form.category} onChange={onChange} className="input">
+        {CAT_TAGS.map(t => <option key={t} value={t}>{t || "Select Category"}</option>)}
+      </select>
+
+      <select name="holidayTag" value={form.holidayTag} onChange={onChange} className="input">
+        {HOLIDAY_TAGS.map(t => <option key={t} value={t}>{t || "No Holiday / Event"}</option>)}
+      </select>
+
+<input
+  name="sub_category"
+  value={form.sub_category}
+  onChange={onChange}
+  placeholder="Sub Category (AI can adjust later)"
+  className="input"
+/>
+
+<input
+  name="hash_tags"
+  value={form.hash_tags}
+  onChange={onChange}
+  placeholder="Hash tags (comma separated, optional)"
+  className="input"
+/>
+
+
+
+
 
       <input
   name="asin"

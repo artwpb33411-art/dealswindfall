@@ -299,6 +299,7 @@ const reingestWindowHours = rules.bump_enabled
           status: "Draft",
           publish_action: "insert",
           ai_status: ai_requested ? "pending" : "skipped",
+          ai_error: null,
           feed_at: new Date().toISOString(),
         })
         .select()
@@ -356,7 +357,7 @@ if (existing && (!samePrice || hoursOld >= reingestWindowHours)) {
     publish_action: "insert",
     canonical_to_id: existing.id,
     ai_status: ai_requested ? "pending" : "skipped",
-
+ai_error: null,
     asin: body.asin || null,
     upc: body.upc || null,
     is_affiliate: body.is_affiliate || false,
