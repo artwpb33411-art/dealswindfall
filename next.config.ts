@@ -26,15 +26,26 @@ const nextConfig = {
         protocol: "https",
         hostname: "res.cloudinary.com",
       },
-	   {
+      {
         protocol: "https",
         hostname: "upload.wikimedia.org",
       },
       {
         protocol: "https",
-        hostname: "via.placeholder.com", // ✅ added placeholder host
+        hostname: "via.placeholder.com",
       },
     ],
+  },
+
+  async redirects() {
+    return [
+      {
+        source: "/ig",
+        destination:
+          "/?utm_source=instagram&utm_medium=social&utm_campaign=bio",
+        permanent: false, // 302 redirect (recommended)
+      },
+    ];
   },
 };
 
