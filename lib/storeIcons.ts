@@ -3,7 +3,7 @@ import { debugPort } from "process";
 export const STORE_ICONS: Record<string, string> = {
   Amazon: "/stores/amazon.png",
   Walmart: "/stores/walmart.png",
-  Ebay: "/stores/ebay.png",
+  eBay: "/stores/ebay.png",
   Target: "/stores/target.png",
   Costco: "/stores/costco.png",
   "Best Buy": "/stores/bestbuy.png",

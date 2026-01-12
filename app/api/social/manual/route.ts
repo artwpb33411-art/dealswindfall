@@ -35,12 +35,18 @@ export async function POST(req: Request) {
   const hashtags =
     Array.isArray(deal.hash_tags) ? deal.hash_tags : [];
 
-  const result = await postDealToSocial({
-    deal,
-    platforms: enabledPlatforms,
-    hashtags,
-    force: true,
-  });
+ const normalizedDeal = {
+  ...deal,
+  title: deal.description ?? "Untitled deal",
+};
+
+const result = await postDealToSocial({
+  deal: normalizedDeal,
+  platforms: enabledPlatforms,
+  hashtags,
+  force: true,
+});
+
 
   return NextResponse.json({
     success: true,

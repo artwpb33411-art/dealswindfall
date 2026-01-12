@@ -300,6 +300,16 @@ const reingestWindowHours = rules.bump_enabled
           publish_action: "insert",
           ai_status: ai_requested ? "pending" : "skipped",
           ai_error: null,
+ // ✅ ADD THESE (missing!)
+    is_affiliate: body.is_affiliate ?? false,
+    affiliate_source: body.is_affiliate
+      ? body.affiliate_source ?? null
+      : null,
+    affiliate_priority: body.is_affiliate
+      ? body.affiliate_priority ?? 0
+      : 0,
+
+
           feed_at: new Date().toISOString(),
         })
         .select()

@@ -889,7 +889,61 @@ const AI_STATUS_PRIORITY: Record<string, number> = {
           ))}
         </select>
 
-       
+       {/* Affiliate */}
+<div className="md:col-span-2 border-t pt-3">
+  <label className="flex items-center gap-2 text-sm font-medium">
+    <input
+      type="checkbox"
+      checked={!!editDeal.is_affiliate}
+      onChange={e =>
+        setEditDeal({
+          ...editDeal,
+          is_affiliate: e.target.checked,
+          affiliate_source: e.target.checked
+            ? editDeal.affiliate_source ?? ""
+            : null,
+          affiliate_priority: e.target.checked
+            ? editDeal.affiliate_priority ?? 1
+            : 0,
+        })
+      }
+    />
+    Affiliate Deal
+  </label>
+
+  {editDeal.is_affiliate && (
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-2">
+      <input
+        className="border p-2 rounded"
+        placeholder="Affiliate Source (Amazon, CJ, Impact, etc.)"
+        value={editDeal.affiliate_source || ""}
+        onChange={e =>
+          setEditDeal({
+            ...editDeal,
+            affiliate_source: e.target.value,
+          })
+        }
+      />
+
+      <select
+        className="border p-2 rounded"
+        value={editDeal.affiliate_priority ?? 1}
+        onChange={e =>
+          setEditDeal({
+            ...editDeal,
+            affiliate_priority: Number(e.target.value),
+          })
+        }
+      >
+        <option value={0}>Normal</option>
+        <option value={1}>Affiliate</option>
+        <option value={2}>Strategic Partner</option>
+        <option value={3}>Sponsored / Premium</option>
+      </select>
+    </div>
+  )}
+</div>
+
         {/* Auto Publish */}
        
       </div>

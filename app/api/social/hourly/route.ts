@@ -242,7 +242,7 @@ const baseQuery = supabaseAdmin
 
 let rawDeals: any[] | null = null;
 
-// 1️⃣ Try affiliate deals first (if enabled)
+// 1️⃣ Prefer affiliate deals if enabled
 if (settings.social_affiliate_only) {
   const { data: affiliateDeals, error } = await baseQuery
     .eq("is_affiliate", true)
@@ -253,15 +253,15 @@ if (settings.social_affiliate_only) {
 
   if (affiliateDeals && affiliateDeals.length > 0) {
     rawDeals = affiliateDeals;
-    console.log("💰 Using affiliate-preferred deals");
+    console.log("💰 Affiliate-only enabled: using affiliate deals");
   } else {
     console.log(
-      "ℹ️ No affiliate deals found. Falling back to all deals."
+      "ℹ️ Affiliate-only enabled, but no affiliate deals found. Falling back to all deals."
     );
   }
 }
 
-// 2️⃣ Fallback to all deals
+// 2️⃣ Fallback to all deals (normal behavior)
 if (!rawDeals) {
   const { data: allDeals, error } = await baseQuery
     .order("published_at", { ascending: false })
@@ -271,6 +271,7 @@ if (!rawDeals) {
 
   rawDeals = allDeals;
 }
+
 
 // If literally no deals, same as before
 if (!rawDeals || rawDeals.length === 0) {

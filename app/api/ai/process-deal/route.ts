@@ -232,7 +232,12 @@ const updatePayload = {
   category: parsed.category,
   sub_category: parsed.sub_category,
   hash_tags: parsed.hash_tags,
-store_name: deal.store_name || parsed.store_name,
+store_name: normalizeStoreName(
+  parsed.store_name,
+  resolvedStore,
+  stores || []
+),
+
 
   ...metrics,
 

@@ -14,7 +14,7 @@ import { useEffect, useState } from "react";
 const STORE_TAGS = [
   "",
   "Amazon","Walmart","Target","Home Depot","Costco","Best Buy",
-  "Sam’s Club","Lowe’s","Kohl’s","Macy’s","Staples","Office Depot","JCPenney", "Woot", "Ebay", "Dell", "HP",
+  "Sam’s Club","Lowe’s","Kohl’s","Macy’s","Staples","Office Depot","JCPenney", "Woot", "eBay", "Dell", "HP",
 ];
 
 const CAT_TAGS = [
@@ -90,14 +90,25 @@ export default function DealsForm() {
      Handlers
   ------------------------------------------------------------- */
 
-  const onChange = (e: any) => {
-    const { name, value } = e.target;
-    setForm(prev => ({ ...prev, [name]: value }));
+  const onChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+  const { name, value, type } = e.target;
 
-    if (name === "storeName") localStorage.setItem("lastStoreName", value);
-    if (name === "category") localStorage.setItem("lastCategory", value);
-    if (name === "holidayTag") localStorage.setItem("lastHolidayTag", value);
-  };
+  const newValue =
+    type === "checkbox"
+      ? (e.target as HTMLInputElement).checked
+      : name === "affiliate_priority"
+      ? Number(value)
+      : value;
+
+  setForm(prev => ({
+    ...prev,
+    [name]: newValue,
+  }));
+
+  if (name === "storeName") localStorage.setItem("lastStoreName", String(newValue));
+  if (name === "category") localStorage.setItem("lastCategory", String(newValue));
+  if (name === "holidayTag") localStorage.setItem("lastHolidayTag", String(newValue));
+};
 
   /* -------------------------------------------------------------
      Auto scrape product info
@@ -145,6 +156,17 @@ export default function DealsForm() {
   setMsg(null);
   setError(null);
 
+console.log("FINAL PAYLOAD", {
+  is_affiliate: !!form.is_affiliate,
+  affiliate_source: form.is_affiliate
+    ? form.affiliate_source?.trim() || null
+    : null,
+  affiliate_priority: form.is_affiliate
+    ? Number(form.affiliate_priority) || 0
+    : 0,
+});
+
+
   try {
     const res = await fetch("/api/deals/ingest", {
       method: "POST",
@@ -180,9 +202,14 @@ export default function DealsForm() {
 asin: form.asin || null,
 upc: form.upc || null,
 
-is_affiliate: form.is_affiliate,
-affiliate_source: form.affiliate_source || null,
-affiliate_priority: Number(form.affiliate_priority) || 0,
+is_affiliate: !!form.is_affiliate,
+affiliate_source: form.is_affiliate
+  ? form.affiliate_source?.trim() || null
+  : null,
+affiliate_priority: form.is_affiliate
+  ? Number(form.affiliate_priority) || 0
+  : 0,
+
 
 
       }),
@@ -297,20 +324,25 @@ if (!res.ok) {
       </label>
 
       <button type="submit" disabled={saving} className="w-full bg-blue-600 text-white p-2 rounded">
-        {saving ? "Saving..." : "Save Deal"}
+        {saving ? "Saving..." : "Save Deal" }
       </button>
 
 
 <label className="flex items-center gap-2 text-sm">
   <input
     type="checkbox"
-    checked={form.is_affiliate}
+    name="is_affiliate"          // ✅ REQUIRED
+    checked={!!form.is_affiliate}
     onChange={e =>
-      setForm(prev => ({ ...prev, is_affiliate: e.target.checked }))
+      setForm(prev => ({
+        ...prev,
+        is_affiliate: e.target.checked,
+      }))
     }
   />
   Affiliate Deal
 </label>
+
 
 {form.is_affiliate && (
   <>

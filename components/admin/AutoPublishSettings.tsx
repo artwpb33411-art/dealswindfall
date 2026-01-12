@@ -43,7 +43,7 @@ const ALL_STORES = [
   "Staples",
   "Office Depot",
   "JCPenney",
-  "Ebay",
+  "eBay",
   "Dell",
   "Woot",
   "HP",
@@ -221,7 +221,7 @@ export default function AutoPublishSettings() {
 <label className="flex items-center gap-3 mb-1 ml-6">
   <input
     type="checkbox"
-    checked={settings.social_affiliate_only}
+    checked={!!settings.social_affiliate_only}
     onChange={(e) =>
       setSettings({
         ...settings,
@@ -230,7 +230,7 @@ export default function AutoPublishSettings() {
     }
   />
   <span className="text-sm font-medium">
-    Post only affiliate deals
+   Prioritize affiliate deals when posting
   </span>
 </label>
 
@@ -238,7 +238,6 @@ export default function AutoPublishSettings() {
   When enabled, social auto-posting will only publish deals
   with affiliate links.
 </p>
-
 
 
       </div>

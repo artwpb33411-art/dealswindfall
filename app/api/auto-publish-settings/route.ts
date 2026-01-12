@@ -34,7 +34,7 @@ export async function POST(req: Request) {
       social_enabled: body.social_enabled,
       social_interval_minutes: body.social_interval_minutes,
       allowed_stores: body.allowed_stores,
-
+social_affiliate_only: body.social_affiliate_only, // ✅ FIX
       updated_at: new Date().toISOString(),
     })
     .eq("id", 1);
