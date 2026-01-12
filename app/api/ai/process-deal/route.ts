@@ -80,6 +80,20 @@ function resolveStoreFromUrl(
 function safeJsonParse(raw: string) {
   return JSON.parse(raw.replace(/```json/gi, "").replace(/```/g, "").trim());
 }
+function normalizeStoreName(
+  aiStore: string | null,
+  resolvedStore: string | null,
+  stores: { store_name: string }[]
+): string | null {
+  const candidate = aiStore || resolvedStore;
+  if (!candidate) return null;
+
+  const match = stores.find(
+    s => s.store_name.toLowerCase() === candidate.toLowerCase()
+  );
+
+  return match ? match.store_name : candidate;
+}
 
 //const metrics = computeMetrics(deal.old_price, deal.current_price);
 

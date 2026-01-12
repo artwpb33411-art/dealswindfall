@@ -90,7 +90,11 @@ export default function DealsForm() {
      Handlers
   ------------------------------------------------------------- */
 
-  const onChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+  const onChange = (
+  e: React.ChangeEvent<
+    HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
+  >
+) => {
   const { name, value, type } = e.target;
 
   const newValue =
@@ -109,6 +113,7 @@ export default function DealsForm() {
   if (name === "category") localStorage.setItem("lastCategory", String(newValue));
   if (name === "holidayTag") localStorage.setItem("lastHolidayTag", String(newValue));
 };
+
 
   /* -------------------------------------------------------------
      Auto scrape product info
