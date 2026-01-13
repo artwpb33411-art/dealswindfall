@@ -1,53 +1,21 @@
 // lib/trackEvent.ts
 
-// lib/trackEvent.ts
-
-function getTechMeta() {
-  if (typeof window === "undefined") return {};
-
-  const ua = navigator.userAgent.toLowerCase();
-
-  let os = "Unknown";
-  if (ua.includes("windows")) os = "Windows";
-  else if (ua.includes("android")) os = "Android";
-  else if (ua.includes("iphone") || ua.includes("ipad")) os = "iOS";
-  else if (ua.includes("mac os")) os = "MacOS";
-
-  let device_type = "desktop";
-  if (ua.includes("mobile") || ua.includes("android") || ua.includes("iphone"))
-    device_type = "mobile";
-
-  return {
-    os,
-    device_type,
-    screen: `${window.screen.width}x${window.screen.height}`,
-    dpr: window.devicePixelRatio || 1,
-    touch: "ontouchstart" in window,
-  };
-}
-
-
-
 function getDeviceInfo() {
   if (typeof window === "undefined") return {};
 
   const ua = navigator.userAgent;
 
-  // ---------- Screen ----------
   const screenWidth = window.screen.width;
   const screenHeight = window.screen.height;
   const dpr = window.devicePixelRatio || 1;
 
-  // ---------- Touch ----------
   const touch =
     "ontouchstart" in window || navigator.maxTouchPoints > 0;
 
-  // ---------- Device Type ----------
   let device_type: "mobile" | "tablet" | "desktop" = "desktop";
   if (/iPad|Tablet/i.test(ua)) device_type = "tablet";
   else if (/Mobi|Android/i.test(ua)) device_type = "mobile";
 
-  // ---------- OS ----------
   let os = "Unknown";
   if (/Windows/i.test(ua)) os = "Windows";
   else if (/Mac OS/i.test(ua) && !/iPhone|iPad/i.test(ua)) os = "macOS";
@@ -55,7 +23,6 @@ function getDeviceInfo() {
   else if (/Android/i.test(ua)) os = "Android";
   else if (/Linux/i.test(ua)) os = "Linux";
 
-  // ---------- Browser ----------
   let browser = "Other";
   if (/Edg/i.test(ua)) browser = "Edge";
   else if (/Chrome/i.test(ua)) browser = "Chrome";
@@ -81,6 +48,7 @@ export function trackEvent(event: any) {
 
     if (typeof window !== "undefined") {
       visitor_id = localStorage.getItem("dw_visitor_id");
+
       if (!visitor_id) {
         visitor_id =
           "crypto" in window && "randomUUID" in crypto
@@ -93,25 +61,38 @@ export function trackEvent(event: any) {
 
     const deviceInfo = getDeviceInfo();
 
-    fetch("/api/analytics/log", {
+    const payload = {
+      ...event,
+      visitor_id,
+      device: deviceInfo.browser ?? event.device ?? null,
+      metadata: {
+        ...(event.metadata || {}),
+        ...(deviceInfo.metadata || {}),
+      },
+      created_at: new Date().toISOString(),
+    };
+
+    const body = JSON.stringify(payload);
+    const url = "/api/analytics/log";
+
+    // ✅ 1. Beacon (best for outbound clicks)
+    if (typeof navigator !== "undefined" && navigator.sendBeacon) {
+      const blob = new Blob([body], { type: "application/json" });
+      const sent = navigator.sendBeacon(url, blob);
+      if (sent) return;
+    }
+
+    // ✅ 2. Fallback fetch (non-blocking)
+    fetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        ...event,
-
-        visitor_id,
-
-        // Human-readable browser name
-        device: deviceInfo.browser ?? event.device ?? null,
-
-        // Merge metadata safely
-        metadata: {
-          ...(event.metadata || {}),
-          ...(deviceInfo.metadata || {}),
-        },
-      }),
+      body,
+      keepalive: true,
+    }).catch(() => {
+      // analytics must never break UX
     });
-  } catch (e) {
-    console.error("Tracking error:", e);
+
+  } catch {
+    // swallow all errors
   }
 }
