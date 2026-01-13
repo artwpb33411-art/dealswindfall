@@ -79,6 +79,18 @@ function slugify(text: string) {
     .slice(0, 120);
 }
 
+
+function toSlug(input: string | null | undefined): string | null {
+  if (!input) return null;
+
+  return input
+    .toLowerCase()
+    .replace(/['’]/g, "")       // remove apostrophes
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
+
 function normalizeProductUrl(url: string) {
   try {
     const u = new URL(url.toLowerCase());
@@ -292,7 +304,7 @@ const reingestWindowHours = rules.bump_enabled
           shipping_cost: body.shipping_cost || null,
           expire_date: body.expire_date || null,
           holiday_tag: body.holiday_tag || null,
-
+holiday_tag_slug: toSlug(body.holiday_tag),
           slug: slugify(body.description),
           slug_es: slugify(body.description_es || body.description),
 
@@ -358,7 +370,9 @@ if (existing && (!samePrice || hoursOld >= reingestWindowHours)) {
     coupon_code: body.coupon_code || null,
     shipping_cost: body.shipping_cost || null,
     expire_date: body.expire_date || null,
-    holiday_tag: body.holiday_tag || null,
+   holiday_tag: body.holiday_tag || null,
+holiday_tag_slug: toSlug(body.holiday_tag),
+
 
     slug: slugify(body.description),
     slug_es: slugify(body.description_es || body.description),
