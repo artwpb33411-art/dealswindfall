@@ -17,7 +17,4 @@ HP: "/stores/hp.png",
 Woot: "/stores/woot.png",
 "Sam's Club": "/stores/samsclub.png",
 "Macy's": "/stores/macys.png",
-"Sam’s Club": "/stores/samsclub.png",
-"Kohl’s": "/stores/kohls.png",
-"Lowe’s": "/stores/lowes.png",
 };
