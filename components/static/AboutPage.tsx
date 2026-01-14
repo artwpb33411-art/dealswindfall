@@ -1,5 +1,4 @@
 "use client";
-
 import { useEffect } from "react";
 import { useLangStore } from "@/lib/languageStore";
 
@@ -13,77 +12,106 @@ export default function AboutPage() {
   if (!hydrated) return null;
 
   return (
-    <div className="p-6 text-gray-700 leading-relaxed overflow-y-auto scrollbar-thin">
+    /* Added pb-24 for extra bottom space and min-h-screen to ensure the container is tall enough */
+    <div className="p-6 pb-24 text-gray-700 leading-relaxed overflow-y-auto scrollbar-thin max-w-4xl mx-auto min-h-screen">
       {lang === "en" ? (
         <>
-          <h1 className="text-2xl font-semibold text-blue-600 mb-3">
-            About DealsWindfall
-          </h1>
+          <h1 className="text-3xl font-bold text-blue-600 mb-4">About DealsWindfall</h1>
+          
+          <section className="mb-6">
+            <h2 className="text-xl font-semibold mb-2 text-gray-800">Who We Are</h2>
+            <p className="text-base mb-3">
+              <strong>DealsWindfall</strong> is a premier deal-discovery hub dedicated to finding the 
+              deepest discounts across the web. Our mission is to bridge the gap between shoppers and 
+              top-tier retailers like Amazon, eBay, and Walmart.
+            </p>
+          </section>
 
-          <p className="text-[14px] mb-2">
-            <strong>DealsWindfall</strong> is an independent deal discovery platform designed
-            to help shoppers find genuine discounts, limited-time offers, and value deals
-            from well-known online and retail stores.
-          </p>
+          <section className="mb-6">
+            <h2 className="text-xl font-semibold mb-2 text-gray-800">Our Curation Process</h2>
+            <p className="text-base mb-3">
+              In a world of "fake sales," we focus on <strong>real value</strong>. Our system scans 
+              thousands of listings daily, filtering for limited-time price drops and verified coupons. 
+              We prioritize deals that are "fresh" so you know they are still active.
+            </p>
+          </section>
 
-          <p className="text-[14px] mb-2">
-            We research, curate, and organize deals across multiple categories such as
-            electronics, home essentials, fashion, beauty, and everyday products — making
-            it easier for users to compare options and save time while shopping.
-          </p>
+          <section className="mb-6 bg-gray-50 p-4 border-l-4 border-blue-600 rounded">
+            <h2 className="text-lg font-semibold mb-2 text-blue-800">Transparency & Trust</h2>
+            <p className="text-sm">
+              DealsWindfall is an independent platform. We do not process payments or ship products. 
+              As part of our commitment to transparency, note that we participate in the Amazon Associates, 
+              eBay Partner Network, and Walmart Affiliate programs. This means we may earn a small 
+              commission on qualifying purchases at no extra cost to you.
+            </p>
+          </section>
 
-          <p className="text-[14px] mb-2">
-            DealsWindfall does <strong>not sell products directly</strong>. When you click
-            on a deal, you are redirected to the retailer’s website where the purchase is
-            completed under their terms, pricing, and policies.
-          </p>
-
-          <p className="text-[14px] mb-2">
-            Our mission is simple: to create a clean, transparent, and user-friendly space
-            where shoppers can discover real savings without misleading pricing or hidden
-            intent.
-          </p>
-
-          <p className="text-[14px] mb-2">
-            As we continue to grow, our focus remains on accuracy, trust, and delivering
-            helpful information — so users can shop confidently and make informed decisions.
-          </p>
+          <section className="mb-10">
+            <h2 className="text-xl font-semibold mb-2 text-gray-800">Contact Us</h2>
+            <p className="text-base">
+              Have a question? Reach out to our team at: 
+              <br />
+            <a
+              href="https://www.dealswindfall.com/contact"
+              className="text-blue-600 underline"
+            >
+              https://www.dealswindfall.com/contact
+            </a>
+            </p>
+          </section>
+          
+		  
+	  
+          {/* This empty div acts as a "spacer" for mobile safe areas */}
+          <div className="h-12 w-full" aria-hidden="true"></div>
         </>
       ) : (
         <>
-          <h1 className="text-2xl font-semibold text-blue-600 mb-3">
-            Acerca de DealsWindfall
-          </h1>
+          <h1 className="text-3xl font-bold text-blue-600 mb-4">Acerca de DealsWindfall</h1>
+          
+          <section className="mb-6">
+            <h2 className="text-xl font-semibold mb-2 text-gray-800">Quiénes Somos</h2>
+            <p className="text-base mb-3">
+              <strong>DealsWindfall</strong> es un centro de descubrimiento de ofertas dedicado a encontrar 
+              los descuentos más profundos en la web. Nuestra misión es conectar a los compradores con 
+              minoristas como Amazon, eBay y Walmart.
+            </p>
+          </section>
 
-          <p className="text-[14px] mb-2">
-            <strong>DealsWindfall</strong> es una plataforma independiente de descubrimiento
-            de ofertas diseñada para ayudar a los compradores a encontrar descuentos reales,
-            promociones por tiempo limitado y ofertas de valor en tiendas en línea y físicas
-            reconocidas.
-          </p>
+           <section className="mb-6">
+            <h2 className="text-xl font-semibold mb-2 text-gray-800">Nuestro Proceso de Selección</h2>
+            <p className="text-base mb-3">
+             En un mundo lleno de "falsas rebajas", nos enfocamos en el <strong>valor real</strong>. 
+        Nuestro sistema analiza miles de listados diariamente, filtrando caídas de precios por 
+        tiempo limitado y cupones verificados. Priorizamos las ofertas "frescas" para que 
+        sepas que aún están activas al momento de publicarlas.
+            </p>
+          </section>
 
-          <p className="text-[14px] mb-2">
-            Investigamos, seleccionamos y organizamos ofertas en múltiples categorías como
-            electrónicos, artículos para el hogar, moda, belleza y productos de uso diario,
-            facilitando la comparación y el ahorro de tiempo al comprar.
-          </p>
+          <section className="mb-6 bg-gray-50 p-4 border-l-4 border-blue-600 rounded">
+            <h2 className="text-lg font-semibold mb-2 text-blue-800">Transparencia y Confianza</h2>
+            <p className="text-sm">
+              Somos participantes en los programas de afiliados de Amazon, eBay y Walmart. 
+              Podemos ganar una pequeña comisión por compras elegibles sin costo adicional para usted.
+            </p>
+          </section>
 
-          <p className="text-[14px] mb-2">
-            DealsWindfall <strong>no vende productos directamente</strong>. Al hacer clic en
-            una oferta, será redirigido al sitio web del minorista donde la compra se realiza
-            bajo sus propios precios, términos y políticas.
-          </p>
+          <section className="mb-10">
+            <h2 className="text-xl font-semibold mb-2 text-gray-800">Contacto</h2>
+            <p className="text-base">
+              ¿Tiene preguntas? Contáctenos en: 
+                <br />
+            <a
+              href="https://www.dealswindfall.com/contact"
+              className="text-blue-600 underline"
+            >
+              https://www.dealswindfall.com/contact
+            </a>
+            </p>
+          </section>
 
-          <p className="text-[14px] mb-2">
-            Nuestra misión es simple: crear un espacio claro, transparente y fácil de usar
-            donde los compradores puedan descubrir ahorros reales sin información engañosa.
-          </p>
-
-          <p className="text-[14px] mb-2">
-            A medida que seguimos creciendo, nuestro enfoque sigue siendo la precisión,
-            la confianza y la entrega de información útil para que los usuarios compren
-            con seguridad y tomen decisiones informadas.
-          </p>
+          {/* Espaciador para móviles */}
+          <div className="h-12 w-full" aria-hidden="true"></div>
         </>
       )}
     </div>

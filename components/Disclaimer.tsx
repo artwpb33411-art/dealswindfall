@@ -16,25 +16,37 @@ export default function Disclaimer() {
     <div className="mt-6 text-xs text-gray-500 border-t pt-4 px-2 leading-relaxed">
       <strong>{lang === "en" ? "Disclaimer:" : "Descargo de responsabilidad:"}</strong>{" "}
       {lang === "en" ? (
-        <>
-          DealsWindfall is an independent deal discovery website and does not sell products directly.
-          Prices, discounts, coupons, availability, and stock levels may change at any time on the
-          retailer’s website. Always verify details on the retailer’s checkout page before making a
-          purchase. DealsWindfall may apply for or participate in affiliate programs and may earn a
-          commission from qualifying purchases at no additional cost to you. We are not responsible
-          for expired, incorrect, or third-party information.
-        </>
+       <>
+  <p className="mb-2">
+    <strong>As an Amazon Associate, I earn from qualifying purchases.</strong>
+  </p>
+  <p>
+    DealsWindfall is an independent deal discovery website and a participant in the 
+    eBay Partner Network and Walmart Affiliate Program. We may earn a commission 
+    from qualifying purchases at no additional cost to you. Prices, discounts, 
+    and availability may change at any time; always verify details on the 
+    retailer’s checkout page. We are not responsible for expired or incorrect 
+    third-party information.
+  </p>
+</>
       ) : (
-        <>
-          DealsWindfall es un sitio web independiente de descubrimiento de ofertas y no vende
-          productos directamente. Los precios, descuentos, cupones, disponibilidad y niveles de
-          inventario pueden cambiar en cualquier momento en el sitio web del minorista. Siempre
-          verifique los detalles en la página de pago del minorista antes de realizar una compra.
-          DealsWindfall puede solicitar o participar en programas de afiliados y podría recibir una
-          comisión por compras que califiquen sin costo adicional para usted. No somos responsables
-          por información vencida, incorrecta o proporcionada por terceros.
-        </>
-      )}
+  <>
+    <p className="mb-2">
+      <strong>Como asociado de Amazon, percibo ingresos por las compras elegibles.</strong>
+    </p>
+    <p>
+      DealsWindfall es un sitio web independiente de descubrimiento de ofertas y 
+      participa en el eBay Partner Network y el Programa de Afiliados de Walmart. 
+      Podemos recibir una comisión por las compras que califiquen, sin costo adicional 
+      para usted. Los precios, descuentos y la disponibilidad pueden cambiar en 
+      cualquier momento; verifique siempre los detalles en la página de pago del 
+      minorista. No nos hacemos responsables por información de terceros vencida 
+      o incorrecta.
+    </p>
+  </>
+)
+      
+      }
     </div>
   );
 }

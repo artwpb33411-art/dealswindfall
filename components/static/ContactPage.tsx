@@ -243,6 +243,12 @@ export default function ContactPage() {
             ? "Submit"
             : "Enviar"}
         </button>
+
+        <p className="text-[10px] text-gray-400 mt-2 text-center">
+  {lang === "en" 
+    ? "By submitting, you agree to our Privacy Policy. We do not share your data with third parties." 
+    : "Al enviar, usted acepta nuestra Política de Privacidad. No compartimos sus datos con terceros."}
+</p>
       </form>
     </div>
   );
