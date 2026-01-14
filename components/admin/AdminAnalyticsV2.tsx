@@ -12,8 +12,9 @@ import CategoryDealViewsCard from "./CategoryDealViewsCard";
 
 
 export default function AdminAnalyticsV2() {
-  const [start, setStart] = useState("2025-12-30");
-  const [end, setEnd] = useState("2026-01-06");
+  const getToday = () => new Date().toISOString().split("T")[0];
+  const [start, setStart] = useState(getToday());
+  const [end, setEnd] = useState(getToday());
   const [limit, setLimit] = useState(20);
 
   const [data, setData] = useState<any>(null);
