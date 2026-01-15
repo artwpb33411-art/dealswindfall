@@ -30,6 +30,7 @@ interface RelatedDeal {
   image_url: string | null;
   store_name: string | null;
 }
+
 interface DealDetailProps {
   deal: {
     id: number;
@@ -58,17 +59,20 @@ interface DealDetailProps {
     deal_level?: string | null;
   };
 
- 
-    totalViews?: number;
- relatedDeals?: RelatedDeal[];
- 
- 
+  totalViews?: number;
+  relatedDeals?: RelatedDeal[];
+  engagementDeals?: RelatedDeal[]; // ✅ NEW
+   engagementLinkType?: "slug" | "id"; 
 }
+
+
 
 export default function DealDetail({
   deal,
   totalViews,
-   relatedDeals,
+  relatedDeals,
+  engagementDeals, // ✅ ADD THIS
+   engagementLinkType = "slug",
 }: DealDetailProps) {
 
 
@@ -114,6 +118,7 @@ useEffect(() => {
       </div>
     );
   }
+
 
   /* ---------------------------------------------------------
      🔹 Language-specific content
@@ -381,6 +386,20 @@ const hasValidDiscount =
 />
 
 )}
+
+{engagementDeals && engagementDeals.length > 0 && (
+  <section className="mt-10">
+   
+
+    <RelatedDeals
+      deals={engagementDeals}
+      currentDealId={deal.id}
+      linkType={engagementLinkType} // ✅ IMPORTANT
+    />
+  </section>
+)}
+
+
 
         {/* Notes */}
   <hr className="my-10 border-slate-200" />

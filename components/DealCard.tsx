@@ -1,5 +1,5 @@
 "use client";
-
+import { useState, useEffect } from "react";
 import Image from "next/image";
 import { trackEvent } from "@/lib/trackEvent";
 import {
@@ -88,12 +88,30 @@ export default function DealCard({
     });
   };
 
+
+  function isInAppBrowser() {
+  if (typeof navigator === "undefined") return false;
+
+  const ua = navigator.userAgent || "";
+
   return (
-    <div
-      className="relative bg-white shadow-md rounded-lg overflow-hidden hover:shadow-lg transition duration-300 border border-gray-100 cursor-pointer"
-      onClick={handleDealOpen}
-    >
-      {/* Image */}
+    ua.includes("FBAN") ||     // Facebook
+    ua.includes("FBAV") ||
+    ua.includes("Instagram") ||
+    ua.includes("TikTok") ||
+    ua.includes("Line") ||
+    ua.includes("Twitter")
+  );
+}
+const [showBrowserOverlay, setShowBrowserOverlay] = useState(false);
+
+
+  return (
+   <div
+  className="relative bg-white shadow-md rounded-lg overflow-hidden hover:shadow-lg transition duration-300 border border-gray-100 cursor-pointer"
+  onClick={handleDealOpen}
+>
+
       <div className="w-full h-52 bg-gray-100 relative">
         {image ? (
           <Image
@@ -178,15 +196,23 @@ export default function DealCard({
         {/* Retailer link */}
         {link && (
           <div className="mt-2">
-            <a
-              href={link}
-              target="_blank"
-              rel="noopener noreferrer"
-              onClick={handleOutboundClick}
-              className="w-full block text-center bg-blue-600 text-white text-sm py-2 rounded-md hover:bg-blue-700 transition"
-            >
-              View Deal
-            </a>
+          <a
+  href={link}
+  target="_blank"
+  rel="noopener noreferrer"
+  onClick={(e) => {
+    handleOutboundClick(e);
+
+    if (isInAppBrowser()) {
+      e.preventDefault();
+      setShowBrowserOverlay(true);
+    }
+  }}
+  className="w-full block text-center bg-blue-600 text-white text-sm py-2 rounded-md hover:bg-blue-700 transition"
+>
+  View Deal
+</a>
+
 
             {/* Redirect clarity */}
             <p className="text-xs text-gray-500 mt-1 text-center">
@@ -201,6 +227,51 @@ export default function DealCard({
           </div>
         )}
       </div>
+      {showBrowserOverlay && link && (
+  <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center">
+    <div className="bg-white rounded-xl p-5 w-[90%] max-w-sm text-center space-y-4">
+      <h3 className="text-lg font-semibold">
+        Open this deal
+      </h3>
+
+      <p className="text-sm text-gray-600">
+        For the best checkout experience, open this deal in your browser or app.
+      </p>
+
+      {/* Open in App (Phase 4 placeholder) */}
+      <button
+        onClick={() => {
+          window.location.href = link;
+        }}
+        className="w-full bg-green-600 text-white py-2 rounded-lg font-medium"
+      >
+        Open in App
+      </button>
+
+      {/* Open in Browser */}
+      <button
+        onClick={() => {
+          window.open(link, "_blank");
+          setShowBrowserOverlay(false);
+        }}
+        className="w-full bg-blue-600 text-white py-2 rounded-lg font-medium"
+      >
+        Open in Browser
+      </button>
+
+      {/* Continue here */}
+      <button
+        onClick={() => {
+          window.location.href = link;
+        }}
+        className="text-sm text-gray-500 underline"
+      >
+        Continue here
+      </button>
+    </div>
+  </div>
+)}
+
     </div>
   );
 }

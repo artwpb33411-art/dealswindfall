@@ -13,9 +13,16 @@ type RelatedDeal = {
 type Props = {
   deals: RelatedDeal[];
   currentDealId: number;
+  linkType?: "slug" | "id"; // ✅ NEW
 };
 
-export default function RelatedDeals({ deals, currentDealId }: Props) {
+
+export default function RelatedDeals({
+  deals,
+  currentDealId,
+  linkType = "slug",
+}: Props) {
+
   if (!deals || deals.length < 2) return null;
 
   return (
@@ -27,11 +34,13 @@ export default function RelatedDeals({ deals, currentDealId }: Props) {
       {/* Desktop */}
       <div className="hidden md:grid grid-cols-5 gap-4">
         {deals.slice(0, 5).map((deal) => (
-          <RelatedDealCard
-            key={deal.id}
-            deal={deal}
-            currentDealId={currentDealId}
-          />
+         <RelatedDealCard
+  key={deal.id}
+  deal={deal}
+  currentDealId={currentDealId}
+  linkType={linkType}
+/>
+
         ))}
       </div>
 
@@ -40,10 +49,13 @@ export default function RelatedDeals({ deals, currentDealId }: Props) {
         <div className="flex gap-4 pr-4">
           {deals.slice(0, 5).map((deal) => (
             <div key={deal.id} className="min-w-[70%]">
-              <RelatedDealCard
-                deal={deal}
-                currentDealId={currentDealId}
-              />
+             <RelatedDealCard
+  key={deal.id}
+  deal={deal}
+  currentDealId={currentDealId}
+  linkType={linkType}
+/>
+
             </div>
           ))}
         </div>
@@ -56,11 +68,16 @@ export default function RelatedDeals({ deals, currentDealId }: Props) {
 function RelatedDealCard({
   deal,
   currentDealId,
+   linkType,
 }: {
   deal: RelatedDeal;
   currentDealId: number;
+   linkType: "slug" | "id";
 }) {
-  const href = `/deals/${deal.id}-${deal.slug}?from=${currentDealId}`;
+  const href =
+    linkType === "id"
+      ? `/?deal=${deal.id}&from=${currentDealId}` // ✅ ID FLOW
+      : `/deals/${deal.id}-${deal.slug}?from=${currentDealId}`; // ✅ SLUG FLOW
 
   return (
     <Link

@@ -19,6 +19,13 @@ import ContactPage from "@/components/static/ContactPage";
 import MobileBottomNav from "@/components/MobileBottomNav";
 import useDebounce from "@/hooks/useDebounce";
 
+//console.log("HomeClient rendered");
+function shuffle<T>(array: T[]) {
+  return array
+    .map((value) => ({ value, sort: Math.random() }))
+    .sort((a, b) => a.sort - b.sort)
+    .map(({ value }) => value);
+}
 
 
 
@@ -41,6 +48,12 @@ const [dealTotalViews, setDealTotalViews] = useState<number | null>(null);
   const [isClosingStoreList, setIsClosingStoreList] = useState(false);
 
   const [isDealDetailOpen, setIsDealDetailOpen] = useState(false);
+  const [engagementDeals, setEngagementDeals] = useState<any[]>([]); // ✅ STEP 1
+ // const [visibleDeals, setVisibleDeals] = useState<any[]>([]);       // (used later)
+
+  //const [engagementDeals, setEngagementDeals] = useState<any[]>([]); // ✅ REQUIRED
+//const [visibleDeals, setVisibleDeals] = useState<any[]>([]);       // (if using visibleDeals)
+
 
   const [staticPage, setStaticPage] = useState<string | null>(null);
   const [isClosingStaticPage, setIsClosingStaticPage] = useState(false);
@@ -50,40 +63,74 @@ const [dealTotalViews, setDealTotalViews] = useState<number | null>(null);
 
   const [searchQuery, setSearchQuery] = useState("");
   const debouncedSearch = useDebounce(searchQuery, 350);
+const [visibleDeals, setVisibleDeals] = useState<any[]>([]);
 
   // Scroll restoration for DealsList
   const dealsListRef = useRef<HTMLDivElement | null>(null);
  
   // ------------ Sync with URL (/?deal=ID) ------------
   useEffect(() => {
-    const dealParam = searchParams.get("deal");
+  const dealParam = searchParams.get("deal");
 
-    if (!dealParam) {
-      setSelectedDeal(null);
-      setIsDealDetailOpen(false);
-      return;
-    }
+  if (!dealParam) {
+    setSelectedDeal(null);
+    setIsDealDetailOpen(false);
+    setEngagementDeals([]); // ✅ reset
+    return;
+  }
+
+  const id = Number(dealParam);
+  if (Number.isNaN(id)) return;
+
+  const fetchDealAndEngagement = async () => {
+    const { data: deal } = await supabase
+      .from("deals")
+      .select("*")
+      .eq("id", id)
+      .maybeSingle();
+
+    if (!deal) return;
+
+    setSelectedDeal(deal);
+    setIsDealDetailOpen(true);
+
+    // ✅ FETCH ENGAGEMENT DEALS HERE
+    const { data: moreDeals } = await supabase
+      .from("deals")
+      .select(`
+        id,
+        slug,
+        description,
+        current_price,
+        old_price,
+        image_link,
+        store_name
+      `)
+      .eq("status", "Published")
+      .neq("id", deal.id)
+      .order("published_at", { ascending: false })
+      .limit(15);
+
+   const normalized = (moreDeals || []).map((d) => ({
+  id: d.id,
+  slug: d.slug ?? "",
+  title: d.description ?? "",
+  price: d.current_price,
+  old_price: d.old_price,
+  image_url: d.image_link,
+  store_name: d.store_name,
+}));
+
+const randomized = shuffle(normalized).slice(0, 5);
+
+setEngagementDeals(randomized);
 
 
-    
-    const id = Number(dealParam);
-    if (Number.isNaN(id)) return;
+    console.log("Engagement deals loaded:", moreDeals?.length);
+  };
 
-    const fetchDeal = async () => {
-      const { data } = await supabase
-        .from("deals")
-        .select("*")
-        .eq("id", id)
-        .maybeSingle();
-
-      if (data) {
-        setSelectedDeal(data);
-        setIsDealDetailOpen(true);
-      }
-    };
-
-    fetchDeal();
-  }, [searchParams]);
+  fetchDealAndEngagement();
+}, [searchParams]);
 
   
 
@@ -183,8 +230,17 @@ const [dealTotalViews, setDealTotalViews] = useState<number | null>(null);
 const handleSelectDeal = (deal: any) => {
   setSelectedDeal(deal);
   setIsDealDetailOpen(true);
+
+  const others = visibleDeals
+    .filter((d) => d.id !== deal.id)
+    .slice(0, 5);
+
+  setEngagementDeals(others); // ✅ STEP 2
+console.log("Engagement deals:", others);
+
   router.push(`/?deal=${deal.id}`, { scroll: false });
 };
+
 
 const handleBackToDeals = () => {
   setIsDealDetailOpen(false);
@@ -277,6 +333,7 @@ if (!hydrated) return null;
     showHotDeals={showHotDeals}
     onSelectDeal={handleSelectDeal}
     scrollRef={dealsListRef}
+    onVisibleDealsChange={setVisibleDeals}
   />
 </div>
 
@@ -285,7 +342,13 @@ if (!hydrated) return null;
           {isDealDetailOpen && (
             <div className="absolute inset-0 bg-white overflow-y-auto custom-scroll z-30 animate-slide-in-right">
            
-             <DealDetail deal={selectedDeal} totalViews={dealTotalViews ?? undefined} />
+           <DealDetail
+  deal={selectedDeal}
+  totalViews={dealTotalViews ?? undefined}
+  engagementDeals={engagementDeals}
+   engagementLinkType="id" 
+/>
+
 
             </div>
           )}
@@ -380,7 +443,13 @@ if (!hydrated) return null;
 
           {/* Deal Detail */}
           <div className="bg-white overflow-y-auto custom-scroll border-r border-gray-100 min-h-0">
-           <DealDetail deal={selectedDeal} totalViews={dealTotalViews ?? undefined} />
+        <DealDetail
+  deal={selectedDeal}
+  totalViews={dealTotalViews ?? undefined}
+  engagementDeals={engagementDeals}
+   engagementLinkType="id" 
+/>
+
 
           </div>
 
