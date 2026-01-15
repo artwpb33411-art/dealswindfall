@@ -14,7 +14,7 @@ import { useEffect, useState } from "react";
 const STORE_TAGS = [
   "",
   "Amazon","Walmart","Target","Home Depot","Costco","Best Buy",
-  "Sam's Club","Lowe's","Kohl's","Macy's","Staples","Office Depot","JCPenney", "Woot", "eBay", "Dell", "HP",
+  "Sam's Club","Kohl's","Macy's","Staples","Office Depot","Woot", "eBay", "Dell", "HP",
 ];
 
 const CAT_TAGS = [

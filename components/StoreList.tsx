@@ -9,16 +9,16 @@ const stores = [
   { name: "Amazon", logo: "/logos/amazon.svg" },
   { name: "Walmart", logo: "/logos/walmart.png" },
   { name: "Target", logo: "/logos/target.png" },
-  { name: "Home Depot", logo: "/logos/home depot.jpg" },
-  { name: "Costco", logo: "/logos/costco.png" },
+  { name: "eBay", logo: "/logos/ebay.png" },
   { name: "Best Buy", logo: "/logos/best buy.jpg" },
-  { name: "Sam's Club", logo: "/logos/sams.png" },
-  { name: "Lowe's", logo: "/logos/lowes.avif" },
-  { name: "Kohl's", logo: "/logos/kohls.svg" },
+{ name: "Kohl's", logo: "/logos/kohls.svg" },
   { name: "Macy's", logo: "/logos/macys.svg" },
+{ name: "Sam's Club", logo: "/logos/sams.png" },
+  { name: "Costco", logo: "/logos/costco.png" },
+  { name: "Home Depot", logo: "/logos/home depot.jpg" },
   { name: "Staples", logo: "/logos/staples.png" },
   { name: "Office Depot", logo: "/logos/office depot.svg" },
-  { name: "JCPenney", logo: "/logos/jc penny.png" },
+  
 ];
 
 type StoreListProps = {
