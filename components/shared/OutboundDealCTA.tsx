@@ -2,7 +2,11 @@
 
 import { useState } from "react";
 import { trackEvent } from "@/lib/trackEvent";
+import { STORE_APP_CONFIG } from "@/lib/storeApps";
 
+/* ----------------------------------------
+   In-app browser detection
+---------------------------------------- */
 function isInAppBrowser() {
   if (typeof navigator === "undefined") return false;
   const ua = navigator.userAgent || "";
@@ -14,6 +18,9 @@ function isInAppBrowser() {
   );
 }
 
+/* ----------------------------------------
+   Component
+---------------------------------------- */
 export default function OutboundDealCTA({
   link,
   label,
@@ -22,7 +29,7 @@ export default function OutboundDealCTA({
   category,
   page,
   className,
-  enableInAppOverlay = false, // ✅ SAFE DEFAULT
+  enableInAppOverlay = false, // safe default
 }: {
   link: string;
   label: string;
@@ -34,7 +41,19 @@ export default function OutboundDealCTA({
   enableInAppOverlay?: boolean;
 }) {
   const [showOverlay, setShowOverlay] = useState(false);
+  const [showBrowserHelp, setShowBrowserHelp] = useState(false);
 
+  /* ----------------------------------------
+     Store app configuration (if supported)
+  ---------------------------------------- */
+  const storeConfig =
+    store && STORE_APP_CONFIG[store]
+      ? STORE_APP_CONFIG[store]
+      : null;
+
+  /* ----------------------------------------
+     Analytics
+  ---------------------------------------- */
   const fireOutbound = () => {
     trackEvent({
       event_name: "deal_outbound_click",
@@ -47,15 +66,15 @@ export default function OutboundDealCTA({
           : ""),
       store: store ?? undefined,
       category: category ?? undefined,
-      user_agent: typeof navigator !== "undefined" ? navigator.userAgent : "",
+      user_agent:
+        typeof navigator !== "undefined" ? navigator.userAgent : "",
     });
   };
 
-  return (
-    <>
-      <button
-  type="button"
-  onClick={(e) => {
+  /* ----------------------------------------
+     Primary CTA click
+  ---------------------------------------- */
+  const handleClick = (e: React.MouseEvent<HTMLButtonElement>) => {
     fireOutbound();
 
     if (enableInAppOverlay && isInAppBrowser()) {
@@ -65,47 +84,81 @@ export default function OutboundDealCTA({
       return;
     }
 
-    // Normal browsers → go straight
+    // Normal browsers (Chrome / Safari)
     window.open(link, "_blank", "noopener,noreferrer");
-  }}
-  className={className ?? "..."}
->
-  {label}
-</button>
+  };
 
+  return (
+    <>
+      {/* Main CTA */}
+      <button
+        type="button"
+        onClick={handleClick}
+        className={
+          className ??
+          "w-full block text-center bg-blue-600 text-white text-sm py-2 rounded-md hover:bg-blue-700 transition"
+        }
+      >
+        {label}
+      </button>
 
+      {/* ----------------------------------------
+          Overlay (In-App Browsers Only)
+      ---------------------------------------- */}
       {showOverlay && (
-        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center">
-          <div className="bg-white rounded-xl p-5 w-[90%] max-w-sm text-center space-y-4">
-            <h3 className="text-lg font-semibold">Open this deal</h3>
+        <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center px-4">
+          <div className="bg-white rounded-xl p-5 w-full max-w-sm text-center space-y-4">
+            <h3 className="text-lg font-semibold">
+              Faster checkout available
+            </h3>
+
             <p className="text-sm text-gray-600">
-              For the best checkout experience, open this deal in your browser or app.
+              Facebook opens links in its own browser.  
+              For saved logins and faster checkout, use one of the options below.
             </p>
 
-            <button
-              onClick={() => {
-                window.location.href = link;
-              }}
-              className="w-full bg-green-600 text-white py-2 rounded-lg font-medium"
-            >
-              Open in App
-            </button>
+            {/* ----------------------------------------
+                Open in Store App (if supported)
+            ---------------------------------------- */}
+            {storeConfig && (
+              <button
+                onClick={() => {
+                  const deepLink = storeConfig.getDeepLink(link);
+                  window.location.href = deepLink;
+                }}
+                className="w-full bg-green-600 text-white py-2 rounded-lg font-medium"
+              >
+                {storeConfig.label}
+              </button>
+            )}
 
+            {/* ----------------------------------------
+                Browser instructions (not forced)
+            ---------------------------------------- */}
             <button
-              onClick={() => {
-                window.open(link, "_blank");
-                setShowOverlay(false);
-              }}
+              onClick={() => setShowBrowserHelp(true)}
               className="w-full bg-blue-600 text-white py-2 rounded-lg font-medium"
             >
-              Open in Browser
+              Open in your browser
             </button>
 
+            {showBrowserHelp && (
+              <p className="text-xs text-gray-600 mt-2">
+                <strong>iPhone:</strong> Tap ••• (top right) → Open in Safari  
+                <br />
+                <strong>Android:</strong> Tap ••• → Open in Chrome
+              </p>
+            )}
+
+            {/* Close */}
             <button
-              onClick={() => setShowOverlay(false)}
-              className="text-xs text-gray-400"
+              onClick={() => {
+                setShowOverlay(false);
+                setShowBrowserHelp(false);
+              }}
+              className="text-xs text-gray-400 underline"
             >
-              Close
+              Continue here
             </button>
           </div>
         </div>
