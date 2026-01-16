@@ -53,26 +53,26 @@ export default function OutboundDealCTA({
 
   return (
     <>
-      <a
-        href={link}
-        target="_blank"
-        rel="noopener noreferrer"
-        onClick={(e) => {
-          fireOutbound();
+      <button
+  type="button"
+  onClick={(e) => {
+    fireOutbound();
 
-          if (enableInAppOverlay && isInAppBrowser()) {
-            e.preventDefault();
-            e.stopPropagation();
-            setShowOverlay(true);
-          }
-        }}
-        className={
-          className ??
-          "w-full block text-center bg-blue-600 text-white text-sm py-2 rounded-md hover:bg-blue-700 transition"
-        }
-      >
-        {label}
-      </a>
+    if (enableInAppOverlay && isInAppBrowser()) {
+      e.preventDefault();
+      e.stopPropagation();
+      setShowOverlay(true);
+      return;
+    }
+
+    // Normal browsers → go straight
+    window.open(link, "_blank", "noopener,noreferrer");
+  }}
+  className={className ?? "..."}
+>
+  {label}
+</button>
+
 
       {showOverlay && (
         <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center">

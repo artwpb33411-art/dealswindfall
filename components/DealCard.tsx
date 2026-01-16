@@ -208,7 +208,7 @@ export default function DealCard({
       dealId={deal_id}
       store={store}
       category={category}
-      enableInAppOverlay
+      enableInAppOverlay={true} 
     />
 
     {/* Redirect clarity */}

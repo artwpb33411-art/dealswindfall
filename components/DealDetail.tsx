@@ -258,7 +258,7 @@ const hasValidDiscount =
   store={deal.store_name}
   category={deal.category}
   className="w-full h-12 flex items-center justify-center bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-semibold shadow-sm"
-  enableInAppOverlay={false} // ✅ keep slug behavior unchanged for now
+  enableInAppOverlay={true} // ✅ keep slug behavior unchanged for now
 />
 
 
