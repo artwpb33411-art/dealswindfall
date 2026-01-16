@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import { trackEvent } from "@/lib/trackEvent";
-import { STORE_APP_CONFIG } from "@/lib/storeApps";
 
 /* ----------------------------------------
    In-app browser detection
@@ -44,14 +43,6 @@ export default function OutboundDealCTA({
   const [showBrowserHelp, setShowBrowserHelp] = useState(false);
 
   /* ----------------------------------------
-     Store app configuration (if supported)
-  ---------------------------------------- */
-  const storeConfig =
-    store && STORE_APP_CONFIG[store]
-      ? STORE_APP_CONFIG[store]
-      : null;
-
-  /* ----------------------------------------
      Analytics
   ---------------------------------------- */
   const fireOutbound = () => {
@@ -84,7 +75,7 @@ export default function OutboundDealCTA({
       return;
     }
 
-    // Normal browsers (Chrome / Safari)
+    // Normal browsers → open immediately
     window.open(link, "_blank", "noopener,noreferrer");
   };
 
@@ -109,32 +100,16 @@ export default function OutboundDealCTA({
         <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center px-4">
           <div className="bg-white rounded-xl p-5 w-full max-w-sm text-center space-y-4">
             <h3 className="text-lg font-semibold">
-              Faster checkout available
+              Leaving Facebook’s browser
             </h3>
 
             <p className="text-sm text-gray-600">
               Facebook opens links in its own browser.  
-              For saved logins and faster checkout, use one of the options below.
+              For saved logins, autofill, and faster checkout, we recommend opening
+              this deal in your device’s browser.
             </p>
 
-            {/* ----------------------------------------
-                Open in Store App (if supported)
-            ---------------------------------------- */}
-            {storeConfig && (
-              <button
-                onClick={() => {
-                  const deepLink = storeConfig.getDeepLink(link);
-                  window.location.href = deepLink;
-                }}
-                className="w-full bg-green-600 text-white py-2 rounded-lg font-medium"
-              >
-                {storeConfig.label}
-              </button>
-            )}
-
-            {/* ----------------------------------------
-                Browser instructions (not forced)
-            ---------------------------------------- */}
+            {/* Open in browser instructions */}
             <button
               onClick={() => setShowBrowserHelp(true)}
               className="w-full bg-blue-600 text-white py-2 rounded-lg font-medium"
@@ -144,11 +119,23 @@ export default function OutboundDealCTA({
 
             {showBrowserHelp && (
               <p className="text-xs text-gray-600 mt-2">
-                <strong>iPhone:</strong> Tap ••• (top right) → Open in Safari  
+                <strong>iPhone:</strong> Tap ••• (top right) → Open in Safari
                 <br />
                 <strong>Android:</strong> Tap ••• → Open in Chrome
               </p>
             )}
+
+            {/* Continue in Facebook */}
+            <button
+              onClick={() => {
+                window.open(link, "_blank", "noopener,noreferrer");
+                setShowOverlay(false);
+                setShowBrowserHelp(false);
+              }}
+              className="w-full bg-gray-100 text-gray-700 py-2 rounded-lg font-medium"
+            >
+              Continue here
+            </button>
 
             {/* Close */}
             <button
@@ -158,7 +145,7 @@ export default function OutboundDealCTA({
               }}
               className="text-xs text-gray-400 underline"
             >
-              Continue here
+              Cancel
             </button>
           </div>
         </div>
