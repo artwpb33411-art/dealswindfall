@@ -16,7 +16,6 @@ function escapeHtml(str: string) {
 function trimTo(str: string, max: number) {
   return str.length > max ? str.slice(0, max - 3) + "..." : str;
 }
-
 export function buildCaption(
   deal: SelectedDeal,
   hashtags: string[] = []
@@ -34,7 +33,8 @@ export function buildCaption(
   const store =
     deal.store_name ? ` at ${deal.store_name}` : "";
 
-  const url = `https://www.dealswindfall.com/deals/${deal.id}-${deal.slug}`;
+  // ✅ SHORT, CLEAN, STABLE SOCIAL URL
+  const url = `https://www.dealswindfall.com/?deal=${deal.id}`;
 
   // -----------------------
   // Normalize & finalize hashtags

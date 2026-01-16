@@ -1,10 +1,10 @@
 "use client";
 import { STORE_ICONS } from "@/lib/storeIcons";
 import RelatedDeals from "@/components/deals/RelatedDeals";
-
+import DealAgeWarning from "@/components/shared/DealAgeWarning";
 import { useEffect, useState } from "react";
 import { trackEvent } from "@/lib/trackEvent";
-
+import OutboundDealCTA from "@/components/shared/OutboundDealCTA";
 import TelegramCTA from "@/components/shared/TelegramCTA";
 import ShareDealButton from "@/components/shared/ShareDealButton";
 import Disclaimer from "@/components/Disclaimer";
@@ -125,7 +125,7 @@ useEffect(() => {
   --------------------------------------------------------- */
   const title = lang === "en" ? deal.description : deal.description_es;
   const notes = lang === "en" ? deal.notes : deal.notes_es;
-  const viewDealText = lang === "en" ? "View Deal" : "Ver Oferta";
+  
   const couponLabel = lang === "en" ? "Coupon Code:" : "Código de Cupón:";
   const copiedText = lang === "en" ? "Copied!" : "¡Copiado!";
   const copyText = lang === "en" ? "Copy" : "Copiar";
@@ -139,6 +139,17 @@ const otherDeals =
     ? getAbsoluteLocalTime(publishedAt)
     : null;
   const ageLevel = publishedAt ? getDealAgeLevel(publishedAt) : null;
+  const isOldDeal = ageLevel === "old";
+  const viewDealText =
+  lang === "en"
+    ? isOldDeal
+      ? "Check Current Price"
+      : "View Deal"
+    : isOldDeal
+    ? "Ver precio actual"
+    : "Ver Oferta";
+
+
 const hasValidDiscount =
   deal.old_price != null &&
   deal.old_price > 0 &&
@@ -209,7 +220,7 @@ const hasValidDiscount =
 
     <ShareDealButton
       title={`${title} – $${deal.current_price}`}
-      url={`https://www.dealswindfall.com/deals/${deal.id}-${deal.slug}`}
+  url={`https://www.dealswindfall.com/?deal=${deal.id}`}
     />
     </div>
   </div>
@@ -226,10 +237,13 @@ const hasValidDiscount =
         {deal.image_link && (
           <div className="flex justify-center mb-4">
             <img
-              src={deal.image_link}
-              alt={title}
-              className="max-h-72 object-contain rounded-xl border bg-white"
-            />
+  src={deal.image_link}
+  alt={title}
+  className={`max-h-72 object-contain rounded-xl border bg-white transition ${
+    isOldDeal ? "opacity-70 saturate-75" : ""
+  }`}
+/>
+
           </div>
         )}
 
@@ -237,25 +251,16 @@ const hasValidDiscount =
         {deal.product_link && (
           <div className="mb-4 space-y-1 max-w-xl mx-auto">
 
-          <a
-  href={deal.product_link}
-  target="_blank"
-  rel="noopener noreferrer"
-  onClick={() =>
-    trackEvent({
-      event_name: "deal_outbound_click",
-      event_type: "click",
-      page: window.location.pathname,
-      deal_id: deal.id,
-      store: deal.store_name,
-      category: deal.category,
-      user_agent: navigator.userAgent,
-    })
-  }
+         <OutboundDealCTA
+  link={deal.product_link}
+  label={viewDealText}
+  dealId={deal.id}
+  store={deal.store_name}
+  category={deal.category}
   className="w-full h-12 flex items-center justify-center bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-semibold shadow-sm"
->
-  {viewDealText}
-</a>
+  enableInAppOverlay={false} // ✅ keep slug behavior unchanged for now
+/>
+
 
 
 
@@ -367,11 +372,8 @@ const hasValidDiscount =
   )}
 
   {/* Age warning */}
-  {ageLevel === "old" && (
-    <p className="text-amber-600">
-      ⚠️ Older deal — availability and price may have changed
-    </p>
-  )}
+  <DealAgeWarning publishedAt={deal.published_at} className="text-amber-600" />
+
 </div>
 
 {/* Telegram CTA — NOW SECONDARY */}

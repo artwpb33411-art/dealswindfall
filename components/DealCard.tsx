@@ -1,5 +1,7 @@
 "use client";
 import { useState, useEffect } from "react";
+import DealAgeWarning from "@/components/shared/DealAgeWarning";
+import OutboundDealCTA from "@/components/shared/OutboundDealCTA";
 import Image from "next/image";
 import { trackEvent } from "@/lib/trackEvent";
 import {
@@ -49,6 +51,8 @@ export default function DealCard({
       : "";
 
   const ageLevel = published_at ? getDealAgeLevel(published_at) : null;
+  const isOldDeal = ageLevel === "old";
+
   const relativeTime = published_at ? getRelativeTime(published_at) : null;
   const absoluteTime = published_at
     ? getAbsoluteLocalTime(published_at)
@@ -88,7 +92,7 @@ export default function DealCard({
     });
   };
 
-
+/*
   function isInAppBrowser() {
   if (typeof navigator === "undefined") return false;
 
@@ -103,8 +107,8 @@ export default function DealCard({
     ua.includes("Twitter")
   );
 }
-const [showBrowserOverlay, setShowBrowserOverlay] = useState(false);
-
+//const [showBrowserOverlay, setShowBrowserOverlay] = useState(false);
+*/
 
   return (
    <div
@@ -112,7 +116,12 @@ const [showBrowserOverlay, setShowBrowserOverlay] = useState(false);
   onClick={handleDealOpen}
 >
 
-      <div className="w-full h-52 bg-gray-100 relative">
+     <div
+  className={`w-full h-52 bg-gray-100 relative transition ${
+    isOldDeal ? "opacity-60 grayscale-[30%]" : ""
+  }`}
+>
+
         {image ? (
           <Image
             src={image}
@@ -173,11 +182,8 @@ const [showBrowserOverlay, setShowBrowserOverlay] = useState(false);
         )}
 
         {/* Soft availability warning */}
-        {ageLevel === "old" && (
-          <p className="text-xs text-yellow-600">
-            ⚠️ Older deal — availability may have changed
-          </p>
-        )}
+      <DealAgeWarning publishedAt={published_at} className="text-xs text-yellow-600" />
+
 
         {/* Price info */}
         <div className="flex items-center gap-2 mt-1">
@@ -193,84 +199,34 @@ const [showBrowserOverlay, setShowBrowserOverlay] = useState(false);
           )}
         </div>
 
-        {/* Retailer link */}
-        {link && (
-          <div className="mt-2">
-          <a
-  href={link}
-  target="_blank"
-  rel="noopener noreferrer"
-  onClick={(e) => {
-    handleOutboundClick(e);
+     {/* Retailer link */}
+{link && (
+  <div className="mt-2">
+    <OutboundDealCTA
+      link={link}
+      label={isOldDeal ? "Check Current Price" : "View Deal"}
+      dealId={deal_id}
+      store={store}
+      category={category}
+      enableInAppOverlay
+    />
 
-    if (isInAppBrowser()) {
-      e.preventDefault();
-      setShowBrowserOverlay(true);
-    }
-  }}
-  className="w-full block text-center bg-blue-600 text-white text-sm py-2 rounded-md hover:bg-blue-700 transition"
->
-  View Deal
-</a>
+    {/* Redirect clarity */}
+    <p className="text-xs text-gray-500 mt-1 text-center">
+      You’ll be redirected to {store || "the retailer"} to
+      complete your purchase
+    </p>
 
-
-            {/* Redirect clarity */}
-            <p className="text-xs text-gray-500 mt-1 text-center">
-              You’ll be redirected to {store || "the retailer"} to
-              complete your purchase
-            </p>
-
-            {/* Disclaimer */}
-            <p className="text-[11px] text-gray-400 mt-1 text-center">
-              Price and availability may change at any time.
-            </p>
-          </div>
-        )}
-      </div>
-      {showBrowserOverlay && link && (
-  <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center">
-    <div className="bg-white rounded-xl p-5 w-[90%] max-w-sm text-center space-y-4">
-      <h3 className="text-lg font-semibold">
-        Open this deal
-      </h3>
-
-      <p className="text-sm text-gray-600">
-        For the best checkout experience, open this deal in your browser or app.
-      </p>
-
-      {/* Open in App (Phase 4 placeholder) */}
-      <button
-        onClick={() => {
-          window.location.href = link;
-        }}
-        className="w-full bg-green-600 text-white py-2 rounded-lg font-medium"
-      >
-        Open in App
-      </button>
-
-      {/* Open in Browser */}
-      <button
-        onClick={() => {
-          window.open(link, "_blank");
-          setShowBrowserOverlay(false);
-        }}
-        className="w-full bg-blue-600 text-white py-2 rounded-lg font-medium"
-      >
-        Open in Browser
-      </button>
-
-      {/* Continue here */}
-      <button
-        onClick={() => {
-          window.location.href = link;
-        }}
-        className="text-sm text-gray-500 underline"
-      >
-        Continue here
-      </button>
-    </div>
+    {/* Disclaimer */}
+    <p className="text-[11px] text-gray-400 mt-1 text-center">
+      Price and availability may change at any time.
+    </p>
   </div>
 )}
+
+        
+      </div>
+     
 
     </div>
   );
