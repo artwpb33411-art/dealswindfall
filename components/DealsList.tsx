@@ -101,8 +101,10 @@ export default function DealsList({
   }
 
   if (selectedHoliday) {
-  query = query.eq("holiday_tag", selectedHoliday);
+ query = query.eq("holiday_tag_slug", selectedHoliday);
+
 }
+console.log("Filtering by holiday:", selectedHoliday);
 
   if (showHotDeals) {
     query = query.gte("percent_diff", 30);

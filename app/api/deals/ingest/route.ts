@@ -273,10 +273,31 @@ const reingestWindowHours = rules.bump_enabled
   : 0;
 
 
+
+  
     /* ---------------------------------------------------------
        CASE A — NEW DEAL
     --------------------------------------------------------- */
     if (!existing) {
+
+      let holiday_tag_slug: string | null = null;
+
+if (body.holiday_tag) {
+  const { data: event, error } = await supabaseAdmin
+    .from("holiday_events")
+    .select("slug")
+    .eq("name", body.holiday_tag)
+    .single();
+
+  if (error || !event) {
+    throw new Error(
+      `Invalid holiday tag "${body.holiday_tag}". No matching holiday_events row.`
+    );
+  }
+
+  holiday_tag_slug = event.slug;
+}
+
       const { data, error } = await supabaseAdmin
         .from("deals")
         .insert({
@@ -303,8 +324,17 @@ const reingestWindowHours = rules.bump_enabled
           coupon_code: body.coupon_code || null,
           shipping_cost: body.shipping_cost || null,
           expire_date: body.expire_date || null,
-          holiday_tag: body.holiday_tag || null,
-holiday_tag_slug: toSlug(body.holiday_tag),
+       holiday_tag: holiday_tag_slug,   // store slug, not name
+holiday_tag_slug,
+
+
+
+
+
+//holiday_tag_slug: toSlug(body.holiday_tag),
+
+
+
           slug: slugify(body.description),
           slug_es: slugify(body.description_es || body.description),
 
@@ -337,10 +367,30 @@ holiday_tag_slug: toSlug(body.holiday_tag),
       });
     }
 
+    
    /* ---------------------------------------------------------
    CASE B — REPLACE (price changed OR stale same price)
 --------------------------------------------------------- */
 if (existing && (!samePrice || hoursOld >= reingestWindowHours)) {
+
+  let holiday_tag_slug: string | null = null;
+
+if (body.holiday_tag) {
+  const { data: event, error } = await supabaseAdmin
+    .from("holiday_events")
+    .select("slug")
+    .eq("name", body.holiday_tag)
+    .single();
+
+  if (error || !event) {
+    throw new Error(
+      `Invalid holiday tag "${body.holiday_tag}". No matching holiday_events row.`
+    );
+  }
+
+  holiday_tag_slug = event.slug;
+}
+
 
   const insertPayload = {
     description: body.description,
@@ -371,7 +421,11 @@ if (existing && (!samePrice || hoursOld >= reingestWindowHours)) {
     shipping_cost: body.shipping_cost || null,
     expire_date: body.expire_date || null,
    holiday_tag: body.holiday_tag || null,
-holiday_tag_slug: toSlug(body.holiday_tag),
+holiday_tag_slug,
+
+
+
+//holiday_tag_slug: toSlug(body.holiday_tag),
 
 
     slug: slugify(body.description),

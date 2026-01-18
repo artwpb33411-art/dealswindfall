@@ -55,34 +55,39 @@ export async function POST(req: Request) {
     const old_price = body.oldPrice ? Number(body.oldPrice) : null;
     const metrics = computeMetrics(old_price, current_price);
 
-    const payload = {
-      description,
-      notes: body.notes || "",
-      description_es: body.description_es || description,
-      notes_es: body.notes_es || body.notes || "",
+   const payload = {
+  description,
+  notes: body.notes || "",
+  description_es: body.description_es || description,
+  notes_es: body.notes_es || body.notes || "",
 
-      store_name: body.storeName || null,
-      category: body.category || null,
+  store_name: body.storeName || null,
+  category: body.category || null,
 
-      current_price,
-      old_price,
-      ...metrics,
+  current_price,
+  old_price,
+  ...metrics,
 
-      image_link: body.imageLink || null,
-      product_link: body.productLink || null,
-      review_link: body.reviewLink || null,
-      coupon_code: body.couponCode || null,
-      shipping_cost: body.shippingCost || null,
-      expire_date: body.expireDate || null,
-      holiday_tag: body.holidayTag || null,
+  image_link: body.imageLink || null,
+  product_link: body.productLink || null,
+  review_link: body.reviewLink || null,
+  coupon_code: body.couponCode || null,
+  shipping_cost: body.shippingCost || null,
+  expire_date: body.expireDate || null,
 
-      slug: slugify(description),
-      slug_es: slugify(body.description_es || description),
+  holiday_tag: body.holidayTagSlug || null,
+holiday_tag_slug: body.holidayTagSlug || null,
 
-      status: "Draft",
-      ai_status: ai_requested ? "pending" : "skipped",
-      published_at: null,
-    };
+
+
+  slug: slugify(description),
+  slug_es: slugify(body.description_es || description),
+
+  status: "Draft",
+  ai_status: ai_requested ? "pending" : "skipped",
+  published_at: null,
+};
+
 
     const { data, error } = await supabaseAdmin
       .from("deals")
@@ -172,6 +177,11 @@ export async function PUT(req: Request) {
       update.status = "Draft";
       update.published_at = null;
     }
+
+if (fields.holiday_tag !== undefined) {
+  update.holiday_tag = fields.holiday_tag_slug;
+  update.holiday_tag_slug = fields.holiday_tag_slug || null;
+}
 
     const { data, error } = await supabaseAdmin
       .from("deals")
