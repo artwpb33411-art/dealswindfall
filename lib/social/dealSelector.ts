@@ -32,6 +32,7 @@ async function tryFetchDeal(since: string, allowedStores: string[]) {
     .select(`
       id,
       description,
+      description_es,
       notes,
       current_price,
       old_price,
@@ -57,7 +58,7 @@ async function tryFetchDeal(since: string, allowedStores: string[]) {
     id: r.id,
     title: r.description,
     description: r.notes,
-
+ description_es: r.description_es ?? null,
     price: r.current_price ?? null,
     old_price: r.old_price ?? null,
     percent_diff: r.percent_diff ?? null,

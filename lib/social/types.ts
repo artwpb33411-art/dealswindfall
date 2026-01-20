@@ -7,7 +7,7 @@ export interface SelectedDeal {
   image_link: string | null;
   slug: string | null;
   store_name: string | null;
-
+description_es: string | null;
   // Normalized pricing used across flyers + captions
   price: number | null;          // maps from current_price
   old_price: number | null;

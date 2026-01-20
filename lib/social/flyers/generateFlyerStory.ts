@@ -5,6 +5,11 @@ import path from "path";
 import { loadFonts } from "../fonts";
 import { setFont } from "../canvasFont";
 import type { CanvasRenderingContext2D } from "canvas";
+import type { FlyerLang } from "../flyerText";
+import { FLYER_TEXT } from "../flyerText";
+
+
+
 
 loadFonts();
 console.log("✅ Inter fonts loaded");
@@ -65,8 +70,10 @@ function wrapLines(
 
 export async function generateFlyerStory(
   deal: SelectedDeal,
-  imageBuffer: Buffer
+  imageBuffer: Buffer,
+  lang: FlyerLang = "en"
 ): Promise<Buffer> {
+
 
   // 🔒 HARD GUARD — MUST BE FIRST
   if (typeof deal.price !== "number") {
@@ -81,12 +88,20 @@ Keys: ${Object.keys(deal).join(", ")}`
   ctx.fillStyle = "#ffffff";
   ctx.fillRect(0, 0, WIDTH, HEIGHT);
 
+  const t = FLYER_TEXT[lang];
+
   /* ---------- TITLE ---------- */
-  const safeTitle =
-    deal.title ||
-    deal.description ||
-    deal.slug ||
-    "Hot Deal!";
+  const safeTitle: string =
+  lang === "es"
+    ? deal.description_es?.trim() ||
+      deal.title?.trim() ||
+      deal.description?.trim() ||
+      t.fallbackTitle
+    : deal.title?.trim() ||
+      deal.description?.trim() ||
+      deal.slug ||
+      t.fallbackTitle;
+
 
   ctx.fillStyle = "#111827";
 
@@ -170,7 +185,7 @@ console.log("PRICE DEBUG:", deal.price, typeof deal.price);
  // ctx.font = "700 50px Inter";
  setFont(ctx, 50, 700);
 
-  ctx.fillText(`${percent}% OFF`, WIDTH / 2, badgeY + 195);
+  ctx.fillText(`${percent}% ${t.off}`, WIDTH / 2, badgeY + 195);
 
  /* ---------- FOOTER BANNER (FIXED HEIGHT) ---------- */
 // FOOTER (STORY – LEFT ALIGNED)
@@ -197,14 +212,14 @@ try {
 } catch (err) {
   console.warn("⚠️ Story footer banner error:", err);
 }
-
+console.log("🟡 Flyer language:", lang);
 // Footer text (RIGHT)
 ctx.textAlign = "right";
 //ctx.font = "400 36px Inter";
 setFont(ctx, 46, 400);
 
 ctx.fillStyle = "#b91c1c";
-ctx.fillText("www.dealswindfall.com", WIDTH - 80, footerY + 58);
+ctx.fillText(t.website, WIDTH - 80, footerY + 58);
 
 
   return canvas.toBuffer("image/jpeg", { quality: 0.9 });

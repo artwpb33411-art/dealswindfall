@@ -48,22 +48,55 @@ const ALL_STORES = [
   "HP",
 ];
 
+
+
+
 export default function AutoPublishSettings() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
 
   const [settings, setSettings] = useState({
-    enabled: true,
-    deals_per_cycle: 6,
-    interval_minutes: 60,
+  enabled: true,
+  deals_per_cycle: 6,
+  interval_minutes: 60,
 
-    social_enabled: true,
-    social_interval_minutes: 60,
-    allowed_stores: ["Amazon", "Walmart"],
-    social_affiliate_only: false, // 👈 add this
-  });
+  social_enabled: true,
+  social_interval_minutes: 60,
+  allowed_stores: ["Amazon", "Walmart"],
+  social_affiliate_only: false,
 
+  // ✅ ensure these are NEVER undefined
+  social_enable_ratios: true,
+  social_affiliate_ratio: 4,
+  social_non_affiliate_ratio: 1,
+  social_en_ratio: 3,
+  social_es_ratio: 1,
+  social_ratio_window_posts: 10,
+});
+
+const [ratioStats, setRatioStats] = useState<null | {
+  windowPosts: number;
+  total: number;
+  affiliate: number;
+  nonAffiliate: number;
+  en: number;
+  es: number;
+  latest_posted_at: string | null;
+}>(null);
+
+const [statsLoading, setStatsLoading] = useState(false);
+async function loadRatioStats() {
+  setStatsLoading(true);
+  try {
+    const res = await fetch("/api/social/ratio-stats", { cache: "no-store" });
+    const data = await res.json();
+    if (res.ok) setRatioStats(data);
+  } catch {
+    // ignore preview errors
+  }
+  setStatsLoading(false);
+}
   // LOAD SETTINGS  
   useEffect(() => {
     async function load() {
@@ -72,6 +105,8 @@ export default function AutoPublishSettings() {
         const data = await res.json();
         if (res.ok) {
           setSettings(data);
+          await loadRatioStats();
+
         } else {
           setMessage("⚠ Could not load settings.");
         }
@@ -98,6 +133,8 @@ export default function AutoPublishSettings() {
       const data = await res.json();
       if (res.ok) {
         setMessage("✅ Settings saved successfully.");
+        loadRatioStats();
+
       } else {
         setMessage("❌ " + (data.error || "Failed to save."));
       }
@@ -229,17 +266,236 @@ export default function AutoPublishSettings() {
     }
   />
   <span className="text-sm font-medium">
-   Prioritize affiliate deals when posting
+  Affiliate-only mode
   </span>
 </label>
 
 <p className="text-sm text-gray-500 ml-12 mb-4">
-  When enabled, social auto-posting will only publish deals
-  with affiliate links.
+ When enabled, automation will post only affiliate deals (falls back to all deals if none found, unless Strict mode is enabled).
 </p>
 
 
       </div>
+<hr className="my-6" />
+
+{/* SOCIAL RATIO CONTROLS */}
+{settings.social_enabled && (
+  <div className="mb-6">
+    <h3 className="text-lg font-semibold text-gray-800 mb-3">
+      Social Content Distribution
+    </h3>
+
+    {/* Enable Ratios */}
+    <label className="flex items-center gap-3 mb-4">
+      <input
+        type="checkbox"
+        checked={settings.social_enable_ratios}
+        onChange={(e) =>
+          setSettings({
+            ...settings,
+            social_enable_ratios: e.target.checked,
+          })
+        }
+      />
+      <span className="font-medium">
+        Enforce content ratios automatically
+      </span>
+    </label>
+
+    {/* Affiliate Ratio */}
+    <div className="mb-4 ml-6">
+      <label className="block font-medium mb-1">
+        Affiliate vs Non-Affiliate
+      </label>
+      <div className="flex items-center gap-2">
+        <input
+          type="number"
+          min={0}
+          value={settings.social_affiliate_ratio}
+          onChange={(e) =>
+            setSettings({
+              ...settings,
+              social_affiliate_ratio: Number(e.target.value),
+            })
+          }
+          className="border rounded p-2 w-20"
+        />
+        <span>:</span>
+        <input
+          type="number"
+          min={0}
+          value={settings.social_non_affiliate_ratio}
+          onChange={(e) =>
+            setSettings({
+              ...settings,
+              social_non_affiliate_ratio: Number(e.target.value),
+            })
+          }
+          className="border rounded p-2 w-20"
+        />
+      </div>
+      <p className="text-xs text-gray-500 mt-1">
+        Example: 4:1 means 4 affiliate posts for every 1 non-affiliate
+      </p>
+    </div>
+
+    {/* Language Ratio */}
+    <div className="mb-4 ml-6">
+      <label className="block font-medium mb-1">
+        English vs Spanish
+      </label>
+      <div className="flex items-center gap-2">
+        <input
+          type="number"
+          min={0}
+          value={settings.social_en_ratio}
+          onChange={(e) =>
+            setSettings({
+              ...settings,
+              social_en_ratio: Number(e.target.value),
+            })
+          }
+          className="border rounded p-2 w-20"
+        />
+        <span>:</span>
+        <input
+          type="number"
+          min={0}
+          value={settings.social_es_ratio}
+          onChange={(e) =>
+            setSettings({
+              ...settings,
+              social_es_ratio: Number(e.target.value),
+            })
+          }
+          className="border rounded p-2 w-20"
+        />
+      </div>
+    </div>
+
+    {/* Ratio Window */}
+    <div className="mb-4 ml-6">
+      <label className="block font-medium mb-1">
+        Ratio Evaluation Window
+      </label>
+      <input
+        type="number"
+        min={1}
+        value={settings.social_ratio_window_posts}
+        onChange={(e) =>
+          setSettings({
+            ...settings,
+            social_ratio_window_posts: Number(e.target.value),
+          })
+        }
+        className="border rounded p-2 w-24"
+      />
+      <p className="text-xs text-gray-500 mt-1">
+        Number of recent social posts used to balance ratios
+      </p>
+    </div>
+  </div>
+)}
+
+{/* LIVE RATIO PREVIEW */}
+{settings.social_enabled && (
+  <div className="mb-6 border rounded p-4 bg-gray-50">
+    <div className="flex items-center justify-between">
+      <h3 className="text-lg font-semibold text-gray-800">
+        Live Ratio Preview (Auto Posts)
+      </h3>
+
+      <button
+        type="button"
+        onClick={loadRatioStats}
+        disabled={statsLoading}
+        className="text-sm px-3 py-1 rounded border bg-white hover:bg-gray-100 disabled:opacity-50"
+      >
+        {statsLoading ? "Refreshing..." : "Refresh"}
+      </button>
+    </div>
+
+    {!ratioStats ? (
+      <p className="text-sm text-gray-500 mt-2">
+        No preview data yet.
+      </p>
+    ) : (
+      <div className="mt-3 grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="bg-white border rounded p-3">
+          <div className="text-sm text-gray-600">
+            Window (last {ratioStats.windowPosts} log rows)
+          </div>
+          <div className="text-sm text-gray-600">
+            Total rows: <strong>{ratioStats.total}</strong>
+          </div>
+          {ratioStats.latest_posted_at && (
+            <div className="text-xs text-gray-500 mt-1">
+              Latest: {new Date(ratioStats.latest_posted_at).toLocaleString()}
+            </div>
+          )}
+        </div>
+
+        <div className="bg-white border rounded p-3">
+          <div className="text-sm font-medium text-gray-800 mb-2">
+            Distribution
+          </div>
+
+          <div className="text-sm text-gray-700">
+            Affiliate: <strong>{ratioStats.affiliate}</strong>{" "}
+            <span className="text-gray-500">
+              (
+              {ratioStats.total > 0
+                ? Math.round((ratioStats.affiliate / ratioStats.total) * 100)
+                : 0}
+              %)
+            </span>
+          </div>
+
+          <div className="text-sm text-gray-700">
+            Non-affiliate: <strong>{ratioStats.nonAffiliate}</strong>{" "}
+            <span className="text-gray-500">
+              (
+              {ratioStats.total > 0
+                ? Math.round(
+                    (ratioStats.nonAffiliate / ratioStats.total) * 100
+                  )
+                : 0}
+              %)
+            </span>
+          </div>
+
+          <div className="mt-2 text-sm text-gray-700">
+            English: <strong>{ratioStats.en}</strong>{" "}
+            <span className="text-gray-500">
+              (
+              {ratioStats.total > 0
+                ? Math.round((ratioStats.en / ratioStats.total) * 100)
+                : 0}
+              %)
+            </span>
+          </div>
+
+          <div className="text-sm text-gray-700">
+            Spanish: <strong>{ratioStats.es}</strong>{" "}
+            <span className="text-gray-500">
+              (
+              {ratioStats.total > 0
+                ? Math.round((ratioStats.es / ratioStats.total) * 100)
+                : 0}
+              %)
+            </span>
+          </div>
+        </div>
+
+        <div className="md:col-span-2 text-xs text-gray-500">
+          Note: This preview counts the last N rows in <code>social_post_log</code>.
+          Since you log one row per platform, totals represent log entries, not “runs”.
+        </div>
+      </div>
+    )}
+  </div>
+)}
+
 
       {/* STORE PICKER */}
       <div className="mb-6">

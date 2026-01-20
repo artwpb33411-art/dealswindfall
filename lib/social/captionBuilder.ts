@@ -5,12 +5,10 @@ export type Platform = "facebook" | "instagram" | "telegram" | "x";
 
 export type PlatformCaption = {
   text: string;
-  firstComment?: string; // Facebook only
+  firstComment?: string;
 };
 
 export type PlatformCaptions = Record<Platform, PlatformCaption>;
-
-
 
 export type SocialContent = {
   text: string;
@@ -18,102 +16,91 @@ export type SocialContent = {
   url: string;
 };
 
+/* ---------------- helpers ---------------- */
 
-function formatPrice(deal: SelectedDeal) {
+function resolveTitle(deal: SelectedDeal, lang: SocialLang): string {
+  return lang === "es"
+    ? deal.description_es?.trim() ||
+        deal.title?.trim() ||
+        deal.description?.trim() ||
+        "Oferta destacada"
+    : deal.title?.trim() ||
+        deal.description?.trim() ||
+        "Hot Deal";
+}
+
+function formatPrice(deal: SelectedDeal): string {
   return deal.price != null
     ? `$${Number(deal.price).toFixed(2)}`
     : "Great price";
 }
 
-function buildDiscount(deal: SelectedDeal) {
+function buildDiscount(deal: SelectedDeal, lang: SocialLang): string {
+  const t = SOCIAL_TEXT[lang];
   return deal.percent_diff != null
-    ? ` (${deal.percent_diff}% OFF)`
+    ? ` (${deal.percent_diff}% ${t.off})`
     : "";
 }
 
-function buildStore(deal: SelectedDeal) {
-  return deal.store_name ? ` at ${deal.store_name}` : "";
+function buildStore(deal: SelectedDeal, lang: SocialLang): string {
+  if (!deal.store_name) return "";
+  return lang === "es"
+    ? ` en ${deal.store_name}`
+    : ` at ${deal.store_name}`;
 }
 
-function buildDealUrl(deal: SelectedDeal) {
+function buildDealUrl(deal: SelectedDeal): string {
   return `https://www.dealswindfall.com/?deal=${deal.id}`;
 }
 
-function normalizeHashtags(hashtags: string[]) {
-  return Array.from(
-    new Set(
-      ["#dealswindfall", ...hashtags]
-        .map(t => t.trim())
-        .filter(Boolean)
-        .map(t => (t.startsWith("#") ? t : `#${t}`))
-        .map(t => t.toLowerCase())
-    )
-  );
-}
-
-
-
-function escapeHtml(str: string) {
+function escapeHtml(str: string): string {
   return str
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;");
 }
 
-function trimTo(str: string, max: number) {
+function trimTo(str: string, max: number): string {
   return str.length > max ? str.slice(0, max - 3) + "..." : str;
 }
+
+/* ---------------- simple caption ---------------- */
+
 export function buildCaption(
   deal: SelectedDeal,
-  hashtags: string[] = []
+  hashtags: string[] = [],
+  lang: SocialLang = "en"
 ): SocialContent {
-  const price =
-    deal.price != null
-      ? `$${Number(deal.price).toFixed(2)}`
-      : "Great price";
+  const t = SOCIAL_TEXT[lang];
+  const title = resolveTitle(deal, lang);
+  const price = formatPrice(deal);
+  const discount = buildDiscount(deal, lang);
+  const store = buildStore(deal, lang);
+  const url = buildDealUrl(deal);
 
-  const discount =
-    deal.percent_diff != null
-      ? ` (${deal.percent_diff}% OFF)`
-      : "";
-
-  const store =
-    deal.store_name ? ` at ${deal.store_name}` : "";
-
-  // ✅ SHORT, CLEAN, STABLE SOCIAL URL
-  const url = `https://www.dealswindfall.com/?deal=${deal.id}`;
-
-  // -----------------------
-  // Normalize & finalize hashtags
-  // -----------------------
   const finalHashtags = Array.from(
     new Set(
       ["#dealswindfall", ...hashtags]
-        .map(t => t.trim())
+        .map(h => h.trim())
         .filter(Boolean)
-        .map(t => (t.startsWith("#") ? t : `#${t}`))
-        .map(t => t.toLowerCase())
+        .map(h => (h.startsWith("#") ? h : `#${h}`))
+        .map(h => h.toLowerCase())
     )
   );
 
   const hashtagText =
-    finalHashtags.length > 0
-      ? `\n\n${finalHashtags.join(" ")}`
-      : "";
+    finalHashtags.length > 0 ? `\n\n${finalHashtags.join(" ")}` : "";
 
-  // -----------------------
-  // Captions
-  // -----------------------
   const longCaptionRaw = `
-🔥 Deal Alert: ${deal.title}
+${t.dealAlert}: ${title}
 
 ${price}${discount}${store}
 
-👇 Grab it now:
+${t.grabNow}
 ${url}${hashtagText}
 `.trim();
 
-  const shortRaw = `${deal.title} — ${price}${discount}${store}. Grab it now: ${url}`;
+  const shortRaw = `${title} — ${price}${discount}${store}. ${t.grabNow} ${url}`;
 
   return {
     text: escapeHtml(longCaptionRaw),
@@ -125,61 +112,37 @@ ${url}${hashtagText}
     ),
     url,
   };
-
-  
 }
+
+/* ---------------- platform captions ---------------- */
 
 export function buildPlatformCaptions(
   deal: SelectedDeal,
   hashtags: string[] = [],
-  lang: "en" | "es" = "en"
-)
-: {
-  captions: PlatformCaptions;
-  url: string;
-} {
-  const price =
-    deal.price != null
-      ? `$${Number(deal.price).toFixed(2)}`
-      : "Great price";
+  lang: SocialLang = "en"
+): { captions: PlatformCaptions; url: string } {
+  const t = SOCIAL_TEXT[lang];
+  const title = resolveTitle(deal, lang);
+  const price = formatPrice(deal);
+  const discount = buildDiscount(deal, lang);
+  const store = buildStore(deal, lang);
+  const url = buildDealUrl(deal);
 
-  const discount =
-    deal.percent_diff != null
-      ? ` (${deal.percent_diff}% OFF)`
-      : "";
-
-  const store =
-    deal.store_name ? ` at ${deal.store_name}` : "";
-
-  // ✅ Clean, stable URL (same as before)
-  const url = `https://www.dealswindfall.com/?deal=${deal.id}`;
-
-  // -----------------------
-  // Hashtags (same logic)
-  // -----------------------
   const finalHashtags = Array.from(
     new Set(
       ["#dealswindfall", ...hashtags]
-        .map(t => t.trim())
+        .map(h => h.trim())
         .filter(Boolean)
-        .map(t => (t.startsWith("#") ? t : `#${t}`))
-        .map(t => t.toLowerCase())
+        .map(h => (h.startsWith("#") ? h : `#${h}`))
+        .map(h => h.toLowerCase())
     )
-
-    
   );
-const t = SOCIAL_TEXT[lang];
 
   const hashtagText =
-    finalHashtags.length > 0
-      ? `\n\n${finalHashtags.join(" ")}`
-      : "";
+    finalHashtags.length > 0 ? `\n\n${finalHashtags.join(" ")}` : "";
 
-  // -----------------------
-  // Shared base caption (NO LINK)
-  // -----------------------
   const baseCaption = `
-${t.dealAlert}: ${deal.title}
+${t.dealAlert}: ${title}
 
 ${price}${discount}${store}
 
@@ -187,61 +150,40 @@ ${t.limitedTime}
 ${t.moreDeals}
 `.trim();
 
-  // -----------------------
-  // Platform captions
-  // -----------------------
   const captions: PlatformCaptions = {
-  facebook: {
-  text: escapeHtml(
-    `${baseCaption}
+    facebook: {
+      text: escapeHtml(
+        `${baseCaption}\n\n${t.linkInComments}${hashtagText}`
+      ),
+      firstComment: url,
+    },
 
-${t.linkInComments}${hashtagText}`
-  ),
-  firstComment: url,
-},
+    instagram: {
+      text: escapeHtml(
+        `${baseCaption}\n\n${t.grabNow}\n${url}${hashtagText}`
+      ),
+    },
 
+    telegram: {
+      text: escapeHtml(
+        `${baseCaption}\n\n${t.viewDeal}\n${url}${hashtagText}`
+      ),
+    },
 
-   instagram: {
-  text: escapeHtml(
-    `${baseCaption}
-
-${t.grabNow}
-${url}${hashtagText}`
-  ),
-},
-
-
- telegram: {
-  text: escapeHtml(
-    `${baseCaption}
-
-${t.viewDeal}
-${url}${hashtagText}`
-  ),
-},
-
-
-
-   x: {
-  text: escapeHtml(
-    trimTo(
-      [
-        `${deal.title}`,
-        `${price}${discount}${store}`,
-        "",
-        `👉 ${url}`,
-        "",
-        finalHashtags.join(" "),
-      ].join("\n"),
-      280
-    )
-  ),
-},
-
+    x: {
+      text: escapeHtml(
+        trimTo(
+          [
+            title,
+            `${price}${discount}${store}`,
+            `👉 ${url}`,
+            finalHashtags.join(" "),
+          ].join("\n"),
+          280
+        )
+      ),
+    },
   };
 
-  return {
-    captions,
-    url,
-  };
+  return { captions, url };
 }

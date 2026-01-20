@@ -21,9 +21,9 @@ export async function GET() {
 
   // 2️⃣ Normalize (THIS FIXES YOUR PRICE ISSUE)
   const deal = normalizeDeal(raw);
-
+const postLang: "en" | "es" = "en"; 
   // 3️⃣ Generate flyers
-  const flyers = await safeGenerateFlyers(deal);
+  const flyers = await safeGenerateFlyers(deal, postLang);
 
   // 4️⃣ Generate captions
   const social = buildCaption(deal, []);

@@ -170,6 +170,113 @@ export async function POST(req: Request) {
 
       return NextResponse.json({ skipped: true, nextRun });
     }
+// 4️⃣-A Fetch recent social history for ratio calculation
+const ratioWindow =
+  settings.social_ratio_window_posts ?? 10;
+
+const { data: recentSocial, error: ratioErr } =
+  await supabaseAdmin
+    .from("social_post_log")
+    .select("is_affiliate, language")
+    .eq("post_mode", "auto")
+    .order("posted_at", { ascending: false })
+    .limit(ratioWindow);
+
+if (ratioErr) {
+  throw ratioErr;
+}
+
+const affiliateCount =
+  recentSocial?.filter(r => r.is_affiliate).length ?? 0;
+
+const nonAffiliateCount =
+  recentSocial?.filter(r => !r.is_affiliate).length ?? 0;
+
+const enCount =
+  recentSocial?.filter(r => r.language === "en").length ?? 0;
+
+const esCount =
+  recentSocial?.filter(r => r.language === "es").length ?? 0;
+
+//4️⃣-B. Determine preference (not enforcement)
+  const affRatio =
+  settings.social_affiliate_ratio ?? 4;
+const nonAffRatio =
+  settings.social_non_affiliate_ratio ?? 1;
+
+const enRatio =
+  settings.social_en_ratio ?? 3;
+const esRatio =
+  settings.social_es_ratio ?? 1;
+
+// Prefer the side that is lagging behind its ratio
+const preferAffiliate =
+  affiliateCount / affRatio <
+  nonAffiliateCount / nonAffRatio;
+
+let postLang: "en" | "es" = "en";
+
+if (settings.social_enable_ratios !== false) {
+  if (esRatio === 0 && enRatio > 0) {
+    postLang = "en";
+  } else if (enRatio === 0 && esRatio > 0) {
+    postLang = "es";
+  } else {
+    postLang =
+      enCount / enRatio <= esCount / esRatio ? "en" : "es";
+  }
+}
+
+console.log("🌐 Post language decided:", postLang);
+
+
+console.log("📊 Ratio preference:", {
+  preferAffiliate,
+ // preferLanguage,
+ postLang,
+  affiliateCount,
+  nonAffiliateCount,
+  enCount,
+  esCount,
+});
+
+/*
+// 4️⃣-C Apply ratio-aware selection with fallback
+let candidates = [...available];
+
+// 1️⃣ Affiliate preference
+const affiliatePreferred = candidates.filter(
+  d => d.is_affiliate === preferAffiliate
+);
+if (affiliatePreferred.length > 0) {
+  candidates = affiliatePreferred;
+}
+
+// 2️⃣ Language preference
+const languagePreferred = candidates.filter(
+  d =>
+    (d.language === "es" ? "es" : "en") ===
+    preferLanguage
+);
+if (languagePreferred.length > 0) {
+  candidates = languagePreferred;
+}
+
+// 3️⃣ Deterministic final pick (oldest-first)
+candidates.sort((a: any, b: any) => {
+  const ta = new Date(
+    a.published_at ?? a.created_at ?? 0
+  ).getTime();
+  const tb = new Date(
+    b.published_at ?? b.created_at ?? 0
+  ).getTime();
+  return ta - tb;
+});
+
+//const raw = candidates[0];
+
+*/
+
 
     // 5️⃣ Allowed stores
     const allowedStores: string[] =
@@ -214,8 +321,31 @@ if (isCronCall) {
 
 
  
-// 6️⃣ Fetch candidate deals (last 12 hours)
-const since = new Date(now.getTime() - 12 * 60 * 60 * 1000).toISOString();
+
+// 6️⃣ Fetch candidate deals (freshness window based on last social run)
+const windowStart =
+  state.social_last_run
+    ? new Date(state.social_last_run)
+    : new Date(
+        now.getTime() -
+          (settings.social_interval_minutes ?? 60) * 60_000
+      );
+
+const since = windowStart.toISOString();
+
+console.log(
+  "🪟 Social freshness window since:",
+  since,
+  "(last run:",
+  state.social_last_run,
+  ")"
+);
+
+console.log(
+  "🧪 Deals must be published AFTER:",
+  since
+);
+
 
 const baseQuery = supabaseAdmin
   .from("deals")
@@ -224,6 +354,7 @@ const baseQuery = supabaseAdmin
     id,
     description,
     notes,
+    description_es,
     current_price,
     old_price,
     price_diff,
@@ -231,6 +362,7 @@ const baseQuery = supabaseAdmin
     image_link,
     product_link,
     review_link,
+    affiliate_short_url,
     store_name,
     slug,
     published_at,
@@ -337,6 +469,69 @@ let available = rawDeals
 
   // Discount sanity check
   .filter((d: any) => (d.percent_diff ?? 0) < 60);
+const ratioEnabled = settings.social_enable_ratios ?? true;
+
+let selectedRawDeal: any;
+
+// If ratios are OFF → deterministic oldest-first (available already computed)
+if (!ratioEnabled) {
+  available.sort((a: any, b: any) => {
+    const ta = new Date(a.published_at ?? a.created_at ?? 0).getTime();
+    const tb = new Date(b.published_at ?? b.created_at ?? 0).getTime();
+    return ta - tb;
+  });
+  selectedRawDeal = available[0];
+} else {
+  // 4️⃣-C Apply ratio-aware selection with fallback
+let candidates = [...available];
+
+// Affiliate preference
+const affiliatePreferred = candidates.filter(
+  d => d.is_affiliate === preferAffiliate
+);
+if (affiliatePreferred.length > 0) {
+  candidates = affiliatePreferred;
+}
+// 2️⃣ Language preference (CRITICAL)
+  const languageFiltered = candidates.filter(d =>
+    postLang === "es"
+      ? !!d.description_es
+      : true
+  );
+
+  if (languageFiltered.length > 0) {
+    candidates = languageFiltered;
+  }
+// Language preference
+
+// Deterministic final pick (oldest-first)
+candidates.sort((a: any, b: any) => {
+  const ta = new Date(
+    a.published_at ?? a.created_at ?? 0
+  ).getTime();
+  const tb = new Date(
+    b.published_at ?? b.created_at ?? 0
+  ).getTime();
+  return ta - tb;
+});
+
+ selectedRawDeal = candidates[0];
+
+}
+
+if (!selectedRawDeal) {
+  throw new Error("No deal selected after filtering");
+}
+
+const deal = normalizeDeal(selectedRawDeal);
+
+if (postLang === "es" && !deal.description_es) {
+  console.warn(
+    "⚠️ Spanish selected but deal has no Spanish text. Falling back to EN.",
+    deal.id
+  );
+  postLang = "en";
+}
 
 
 // 6.3 If no qualified deals → DO NOT POST AT ALL (option A for now)
@@ -382,8 +577,16 @@ if (available.length === 0) {
 
 
     // 7️⃣ Pick a raw DB row and map → SelectedDeal
-    const raw = available[Math.floor(Math.random() * available.length)];
-const deal = normalizeDeal(raw);
+  // 6.4 Pick ONE deterministically (oldest-first)
+// This prevents starvation and makes behavior predictable.
+const raw = selectedRawDeal;
+
+
+if (!raw) {
+  throw new Error("No deal selected after filtering");
+}
+
+//const deal = normalizeDeal(raw);
 
     const logTitle =
       deal.title || deal.description || deal.slug || `Deal #${deal.id}`;
@@ -420,7 +623,8 @@ const deal = normalizeDeal(raw);
 console.log("🖨 Generating flyers...");
 
 const { portrait, square, story } =
-  await safeGenerateFlyers(deal);
+await safeGenerateFlyers(deal, postLang);
+
 
 const portraitBuffer = portrait;
 const squareBuffer = square;
@@ -446,7 +650,8 @@ const finalHashtags = Array.from(
 );
 
 
-   const social = buildCaption(deal, aiHashtags);
+  const social = buildCaption(deal, aiHashtags, postLang);
+
 
 
     // 🔟 Post to platforms
@@ -463,23 +668,30 @@ const finalHashtags = Array.from(
     results[platform] = res;
     platformsPosted.push(platform);
 
-    await supabaseAdmin.from("social_post_log").insert({
-      deal_id: deal.id,
-      platform,
-      status: "success",
-    });
+  await supabaseAdmin.from("social_post_log").insert({
+  deal_id: deal.id,
+  platform,
+  status: "success",
+  is_affiliate: !!deal.is_affiliate,
+  language: postLang,
+  post_mode: force ? "manual" : "auto",
+});
+
 
     return res;
   } catch (err) {
     console.error(`❌ ${platform.toUpperCase()} ERROR:`, err);
     results[platform] = { error: String(err) };
 
-    await supabaseAdmin.from("social_post_log").insert({
-      deal_id: deal.id,
-      platform,
-      status: "failed",
-      error: String(err),
-    });
+   await supabaseAdmin.from("social_post_log").insert({
+  deal_id: deal.id,
+  platform,
+  status: "failed",
+  error: String(err),
+  is_affiliate: !!deal.is_affiliate,
+  language: postLang,
+  post_mode: force ? "manual" : "auto",
+});
 
     throw err;
   }
@@ -505,7 +717,7 @@ if (platforms.facebook) {
     const { captions, url } = buildPlatformCaptions(
       deal,
       aiHashtags,
-      deal.language === "es" ? "es" : "en"
+      postLang
     );
 
     return postFacebookWithDelayedComment({
@@ -514,9 +726,9 @@ if (platforms.facebook) {
       caption: captions.facebook.text,
       flyerImage: portrait, // Buffer ✅
       isAffiliate: !!deal.is_affiliate,
-      lang: deal.language === "es" ? "es" : "en",
+      lang: postLang,
       dealUrl: url,
-      affiliateUrl: deal.affiliate_url,
+      affiliateUrl: deal.affiliate_short_url,
     });
   });
 }

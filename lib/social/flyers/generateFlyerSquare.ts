@@ -4,6 +4,8 @@ import type { CanvasRenderingContext2D } from "canvas";
 import path from "path";
 import { loadFonts } from "../fonts";
 import { setFont } from "../canvasFont";
+import type { FlyerLang } from "../flyerText";
+import { FLYER_TEXT } from "../flyerText";
 
 loadFonts();
 
@@ -52,7 +54,8 @@ function wrapLines(
 
 export async function generateFlyerSquare(
   deal: SelectedDeal,
-  imageBuffer: Buffer
+  imageBuffer: Buffer,
+  lang: FlyerLang = "en"
 ): Promise<Buffer> {
 
   // 🔒 HARD GUARD — normalized deal only
@@ -69,12 +72,21 @@ Keys: ${Object.keys(deal).join(", ")}`
   ctx.fillStyle = "#ffffff";
   ctx.fillRect(0, 0, SIZE, SIZE);
 
+const t = FLYER_TEXT[lang];
+
+
   /* ---------- TITLE ---------- */
-  const safeTitle =
-    deal.title ||
-    deal.description ||
-    deal.slug ||
-    "Hot Deal!";
+ const safeTitle: string =
+  lang === "es"
+    ? deal.description_es?.trim() ||
+      deal.title?.trim() ||
+      deal.description?.trim() ||
+      t.fallbackTitle
+    : deal.title?.trim() ||
+      deal.description?.trim() ||
+      deal.slug ||
+      t.fallbackTitle;
+
 
   ctx.fillStyle = "#111827";
   ctx.textAlign = "center";
@@ -133,7 +145,7 @@ Keys: ${Object.keys(deal).join(", ")}`
   ctx.fillText(price, SIZE / 2, badgeY + 100);
 
   setFont(ctx, 40, 700);
-  ctx.fillText(`${percent}% OFF`, SIZE / 2, badgeY + 160);
+  ctx.fillText(`${percent}% ${t.off}`, SIZE / 2, badgeY + 160);
 
   /* ---------- FOOTER ---------- */
   const footerY = SIZE - 100;
@@ -163,7 +175,7 @@ Keys: ${Object.keys(deal).join(", ")}`
   ctx.textAlign = "right";
   setFont(ctx, 38, 400);
   ctx.fillStyle = "#b91c1c";
-  ctx.fillText("www.dealswindfall.com", SIZE - 80, footerY + 60);
+  ctx.fillText(t.website, SIZE - 80, footerY + 60);
 
   return canvas.toBuffer("image/jpeg", { quality: 0.9 });
 }

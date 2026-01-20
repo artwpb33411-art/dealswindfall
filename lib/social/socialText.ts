@@ -6,6 +6,7 @@ export const SOCIAL_TEXT = {
     linkInComments: "👇 Deal link in comments",
     grabNow: "👇 Grab it now:",
     viewDeal: "👉 View deal:",
+    off: "OFF", // ✅ ADD
   },
 
   es: {
@@ -15,7 +16,9 @@ export const SOCIAL_TEXT = {
     linkInComments: "👇 Enlace en los comentarios",
     grabNow: "👇 Consíguelo aquí:",
     viewDeal: "👉 Ver oferta:",
+    off: "DE DESCUENTO", // ✅ ADD
   },
 } as const;
+
 
 export type SocialLang = keyof typeof SOCIAL_TEXT;

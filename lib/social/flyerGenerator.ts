@@ -76,11 +76,18 @@ Keys: ${Object.keys(deal).join(", ")}`
 
   /* ---------- TITLE ---------- */
 
-  const safeTitle =
-    deal.title ||
-    deal.description ||
-    deal.slug ||
-    t.fallbackTitle;
+ const safeTitle: string =
+  lang === "es"
+    ? deal.description_es?.trim() ||
+      deal.title?.trim() ||
+      deal.description?.trim() ||
+      t.fallbackTitle
+    : deal.title?.trim() ||
+      deal.description?.trim() ||
+      deal.slug ||
+      t.fallbackTitle;
+
+
 
   ctx.fillStyle = "#111827";
   ctx.textAlign = "center";
@@ -117,6 +124,7 @@ Keys: ${Object.keys(deal).join(", ")}`
   }
 
   /* ---------- PRICE BADGE ---------- */
+
 
   const badgeW = 650;
   const badgeH = 190;

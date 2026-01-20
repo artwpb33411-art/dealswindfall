@@ -3,9 +3,10 @@ import { generateFlyer } from "./flyerGenerator";
 import { generateFlyerSquare } from "./flyers/generateFlyerSquare";
 import { generateFlyerStory } from "./flyers/generateFlyerStory";
 import type { SelectedDeal } from "./types";
+import type { FlyerLang } from "./flyerText";
 
-export async function safeGenerateFlyers(deal: SelectedDeal) {
-  if (typeof (deal as any).price !== "number") {
+export async function safeGenerateFlyers(deal: SelectedDeal,  lang: FlyerLang) {
+ /* if (typeof (deal as any).price !== "number") {
     throw new Error(
       `❌ RAW DEAL PASSED TO FLYERS. Keys: ${Object.keys(deal)}`
     );
@@ -15,7 +16,7 @@ export async function safeGenerateFlyers(deal: SelectedDeal) {
     throw new Error(
       `RAW DEAL PASSED TO FLYERS. Keys: ${Object.keys(deal)}`
     );
-  }
+  }*/
   try {
 
     if (deal.price === undefined) {
@@ -29,9 +30,9 @@ export async function safeGenerateFlyers(deal: SelectedDeal) {
 
     // 2️⃣ Generate all flyers from same base image
     return {
-      portrait: await generateFlyer(deal, baseImageBuffer),
-      square: await generateFlyerSquare(deal, baseImageBuffer),
-      story: await generateFlyerStory(deal, baseImageBuffer),
+      portrait: await generateFlyer(deal, baseImageBuffer, lang),
+      square: await generateFlyerSquare(deal, baseImageBuffer, lang),
+      story: await generateFlyerStory(deal, baseImageBuffer, lang),
     };
   } catch (err) {
     console.error("❌ safeGenerateFlyers failed:", err);
