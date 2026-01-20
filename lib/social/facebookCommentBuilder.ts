@@ -5,13 +5,16 @@ export async function buildFacebookComment({
   isAffiliate,
   lang,
   dealUrl,
-  affiliateUrl,
+  affiliateShortUrl,
+  productLink,
 }: {
   isAffiliate: boolean;
   lang: "en" | "es";
   dealUrl: string;
-  affiliateUrl?: string;
+  affiliateShortUrl?: string;
+  productLink?: string;
 }) {
+
   const intro = await getFacebookVariant("intro", lang);
   const brand = await getFacebookVariant("brand", lang);
 
@@ -19,7 +22,11 @@ export async function buildFacebookComment({
     ? await getFacebookVariant("disclosure", lang)
     : null;
 
-  const link = isAffiliate ? affiliateUrl : dealUrl;
+ const link = isAffiliate
+  ? affiliateShortUrl || productLink || dealUrl
+  : dealUrl;
+
+
 
   return [
     intro,
