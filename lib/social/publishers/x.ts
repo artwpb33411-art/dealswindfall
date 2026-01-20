@@ -1,3 +1,7 @@
+// Platform entry point
+// Delegates to pipeline-based implementation
+
+
 import { TwitterApi } from "twitter-api-v2";
 
 const client = new TwitterApi({
@@ -16,18 +20,20 @@ function sanitizeForX(text: string) {
 }
 
 // Max X media upload is ~5 MB
-function ensureImageSize(base64: string) {
-  const buffer = Buffer.from(base64, "base64");
+function ensureImageSize(buffer: Buffer) {
   if (buffer.length > 5 * 1024 * 1024) {
     throw new Error("Image too large for X (limit ~5MB). Use square flyer.");
   }
   return buffer;
 }
 
-export async function publishToX(caption: string, imageBase64: string) {
+
+export async function publishToX(caption: string, imageBuffer: Buffer)
+ {
   try {
     const text = sanitizeForX(caption);
-    const buffer = ensureImageSize(imageBase64);
+    const buffer = ensureImageSize(imageBuffer);
+
 
     // Upload media
     const mediaId = await client.v1.uploadMedia(buffer, {

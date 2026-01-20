@@ -211,6 +211,12 @@ notes_es: typeof raw.notes_es === "string" ? raw.notes_es.trim() : null,
   affiliate_source: normalizeText(raw.affiliate_source),
   affiliate_priority: raw.affiliate_priority ?? 0,
 
+  affiliate_short_url:
+  typeof raw.affiliate_short_url === "string"
+    ? raw.affiliate_short_url.trim()
+    : null,
+
+
   ai_requested: raw.ai_requested ?? true,
 };
 
@@ -294,7 +300,10 @@ const reingestWindowHours = rules.bump_enabled
   percent_diff: metrics.percent_diff,
   deal_level: metrics.deal_level,
 
-          image_link: body.image_link || null,
+         image_link: body.image_link
+  ? normalizeImageUrl(body.image_link)
+  : null,
+
           product_link: body.product_link,
           product_link_norm,
           product_key,
@@ -320,6 +329,9 @@ holiday_tag_slug: toSlug(body.holiday_tag),
     affiliate_priority: body.is_affiliate
       ? body.affiliate_priority ?? 0
       : 0,
+affiliate_short_url: body.is_affiliate
+  ? body.affiliate_short_url
+  : null,
 
 
           feed_at: new Date().toISOString(),
@@ -387,6 +399,11 @@ ai_error: null,
     is_affiliate: body.is_affiliate || false,
     affiliate_source: body.affiliate_source || null,
     affiliate_priority: body.affiliate_priority || 0,
+
+affiliate_short_url: body.is_affiliate
+  ? body.affiliate_short_url
+  : null,
+
 
     feed_at: new Date().toISOString(),
   };

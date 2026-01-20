@@ -1,3 +1,5 @@
+import { buildPlatformCaptions } from "./captionBuilder";
+import { postFacebookWithDelayedComment } from "./facebookPostWithDelay";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { buildCaption } from "./captionBuilder";
 import { generateFlyer } from "./flyerGenerator";
@@ -5,33 +7,12 @@ import { generateFlyerSquare } from "./flyers/generateFlyerSquare";
 import { generateFlyerStory } from "./flyers/generateFlyerStory";
 import { publishToX } from "./publishers/x";
 import { publishToTelegram } from "./publishers/telegram";
-import { publishToFacebook } from "./publishers/facebook";
+//import { publishToFacebook } from "./publishers/facebook";
 import { publishToInstagram } from "./publishers/instagram";
+import { getFlyerBaseImage } from "./image/getFlyerBaseImage";
 import { saveFlyerBufferToSupabase } from "./saveFlyerBuffer";
 import { deleteStorageObject } from "./deleteStorageObject";
-import path from "path";
-const DEFAULT_FLYER_IMAGE = path.resolve(
-  process.cwd(),
-  "lib/social/assets/logo.png" );
 
-
-function normalizeDealForFlyer(raw: any) {
-  return {
-    ...raw,
-
-    // normalize pricing
-    price: raw.current_price ?? null,
-    old_price: raw.old_price ?? null,
-    price_diff: raw.price_diff ?? null,
-    percent_diff: raw.percent_diff ?? null,
-
-    // normalize image
-    image_link:
-      raw.image_link && raw.image_link.trim().length > 0
-        ? raw.image_link
-        : DEFAULT_FLYER_IMAGE,
-  };
-}
 
 
 export async function postDealToSocial({
@@ -49,16 +30,16 @@ export async function postDealToSocial({
   const posted: string[] = [];
 
   // Generate flyers
-  const flyerDeal = normalizeDealForFlyer(deal);
+ // 1️⃣ Resolve base image ONCE (Sharp + fallback)
+const baseImageBuffer = await getFlyerBaseImage(deal.image_link);
 
-const portrait = await generateFlyer(flyerDeal);
-const square = await generateFlyerSquare(flyerDeal);
-const story = await generateFlyerStory(flyerDeal);
+// 2️⃣ Generate all flyers from the same image
+const portrait = await generateFlyer(deal, baseImageBuffer);
+const square = await generateFlyerSquare(deal, baseImageBuffer);
+const story = await generateFlyerStory(deal, baseImageBuffer);
 
 
-  const portraitBase64 = portrait.toString("base64");
-  const squareBase64 = square.toString("base64");
-
+ 
   const social = buildCaption(deal, hashtags);
 
   async function tryPost(platform: string, fn: () => Promise<any>) {
@@ -87,22 +68,45 @@ const story = await generateFlyerStory(flyerDeal);
   }
 
   if (platforms.includes("x")) {
-    await tryPost("x", () => publishToX(social.short, squareBase64));
+    await tryPost("x", () =>publishToX(social.short, square)
+);
   }
 
   if (platforms.includes("telegram")) {
     await tryPost("telegram", () =>
-      publishToTelegram(social.text, squareBase64)
+      publishToTelegram(social.text, square)
+
     );
   }
 
-  if (platforms.includes("facebook")) {
-    await tryPost("facebook", () =>
-      publishToFacebook(social.text, portraitBase64)
+ if (platforms.includes("facebook")) {
+  await tryPost("facebook", async () => {
+    const { captions, url } = buildPlatformCaptions(
+      deal,
+      hashtags,
+      deal.language === "es" ? "es" : "en"
     );
-  }
+console.log("🚀 FACEBOOK NEW PIPELINE EXECUTED");
 
- if (platforms.includes("instagram")) {
+    await postFacebookWithDelayedComment({
+  pageId: process.env.FACEBOOK_PAGE_ID!,
+  pageAccessToken: process.env.FACEBOOK_PAGE_TOKEN!,
+  caption: captions.facebook.text,
+   flyerImage: portrait,
+ // flyerImageUrl: undefined, // 👈 FORCE TEXT POST
+  isAffiliate: !!deal.is_affiliate,
+  lang: deal.language === "es" ? "es" : "en",
+  dealUrl: url,
+  affiliateUrl: deal.affiliate_url,
+});
+
+
+
+    return { ok: true };
+  });
+}
+
+if (platforms.includes("instagram")) {
   const igFile = await saveFlyerBufferToSupabase(portrait, "jpg");
 
   await tryPost("instagram", () =>

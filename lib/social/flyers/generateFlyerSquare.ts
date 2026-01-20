@@ -1,23 +1,31 @@
-import { createCanvas, loadImage, registerFont } from "canvas";
+import { createCanvas, loadImage } from "canvas";
 import type { SelectedDeal } from "../types";
+import type { CanvasRenderingContext2D } from "canvas";
 import path from "path";
+import { loadFonts } from "../fonts";
+import { setFont } from "../canvasFont";
+
+loadFonts();
 
 const SIZE = 1080;
 
-registerFont(path.join(process.cwd(), "public/fonts/Inter-Regular.ttf"), {
-  family: "Inter",
-});
-registerFont(path.join(process.cwd(), "public/fonts/Inter-Bold.ttf"), {
-  family: "Inter",
-  weight: "700",
-});
+/* ---------- HELPERS ---------- */
 
 function formatPrice(val: number | null) {
   if (val == null) return "$0.00";
   return `$${val.toFixed(2)}`;
 }
 
-function wrapText(ctx: any, text: string, maxWidth: number): string[] {
+function wrapLines(
+  ctx: CanvasRenderingContext2D,
+  text: string,
+  maxWidth: number,
+  maxLines: number,
+  fontSize: number,
+  weight: 400 | 700 = 700
+) {
+  setFont(ctx, fontSize, weight);
+
   const words = text.split(" ");
   const lines: string[] = [];
   let line = "";
@@ -27,22 +35,41 @@ function wrapText(ctx: any, text: string, maxWidth: number): string[] {
     if (ctx.measureText(test).width > maxWidth && line !== "") {
       lines.push(line.trim());
       line = w + " ";
+      if (lines.length === maxLines) break;
     } else {
       line = test;
     }
   }
-  if (line.trim()) lines.push(line.trim());
+
+  if (line.trim() && lines.length < maxLines) {
+    lines.push(line.trim());
+  }
+
   return lines;
 }
 
-export async function generateFlyerSquare(deal: SelectedDeal): Promise<Buffer> {
+/* ---------- MAIN ---------- */
+
+export async function generateFlyerSquare(
+  deal: SelectedDeal,
+  imageBuffer: Buffer
+): Promise<Buffer> {
+
+  // 🔒 HARD GUARD — normalized deal only
+  if (typeof deal.price !== "number") {
+    throw new Error(
+      `❌ RAW DEAL PASSED TO generateFlyerSquare.
+Keys: ${Object.keys(deal).join(", ")}`
+    );
+  }
+
   const canvas = createCanvas(SIZE, SIZE);
   const ctx = canvas.getContext("2d");
 
   ctx.fillStyle = "#ffffff";
   ctx.fillRect(0, 0, SIZE, SIZE);
 
-  // SAFE TITLE
+  /* ---------- TITLE ---------- */
   const safeTitle =
     deal.title ||
     deal.description ||
@@ -51,22 +78,18 @@ export async function generateFlyerSquare(deal: SelectedDeal): Promise<Buffer> {
 
   ctx.fillStyle = "#111827";
   ctx.textAlign = "center";
-  ctx.font = "700 48px Inter";
 
-  const titleLines = wrapText(ctx, safeTitle, 900);
+  const titleLines = wrapLines(ctx, safeTitle, 900, 3, 48, 700);
   let y = 90;
 
-  for (const line of titleLines.slice(0, 3)) {
+  for (const line of titleLines) {
     ctx.fillText(line, SIZE / 2, y);
     y += 60;
   }
 
-  // IMAGE
-  const safeUrl =
-    deal.image_link || "https://www.dealswindfall.com/dealswindfall-logoA.png";
-
+  /* ---------- IMAGE ---------- */
   try {
-    const img = await loadImage(safeUrl);
+    const img = await loadImage(imageBuffer);
 
     const maxW = 900;
     const maxH = 500;
@@ -80,54 +103,67 @@ export async function generateFlyerSquare(deal: SelectedDeal): Promise<Buffer> {
 
     ctx.drawImage(img, x, imgY, w, h);
   } catch (err) {
-    console.error("❌ Square flyer image error:", err);
+    console.warn("⚠️ Square flyer failed to render image:", err);
   }
 
-  // PRICE BADGE
+  /* ---------- PRICE BADGE ---------- */
   const badgeW = 700;
   const badgeH = 180;
   const badgeX = (SIZE - badgeW) / 2;
   const badgeY = 770;
-  const r = 50;
+  const radius = 50;
 
   ctx.fillStyle = "#facc15";
   ctx.beginPath();
-  ctx.roundRect(badgeX, badgeY, badgeW, badgeH, r);
+  ctx.roundRect(badgeX, badgeY, badgeW, badgeH, radius);
   ctx.fill();
 
   const price = formatPrice(deal.price);
   const percent =
     deal.percent_diff != null
       ? deal.percent_diff
-      : deal.old_price && deal.price
+      : deal.old_price
       ? Math.round(((deal.old_price - deal.price) / deal.old_price) * 100)
       : 0;
 
   ctx.fillStyle = "#ffffff";
   ctx.textAlign = "center";
 
-  ctx.font = "700 80px Inter";
+  setFont(ctx, 80, 700);
   ctx.fillText(price, SIZE / 2, badgeY + 100);
 
-  ctx.font = "700 40px Inter";
+  setFont(ctx, 40, 700);
   ctx.fillText(`${percent}% OFF`, SIZE / 2, badgeY + 160);
 
-  // FOOTER LOGO
+  /* ---------- FOOTER ---------- */
+  const footerY = SIZE - 100;
+
   try {
-    const logo = await loadImage("https://www.dealswindfall.com/dealswindfall-logoA.png");
-    const logoH = 80;
-    const logoW = (logo.width / logo.height) * logoH;
-    ctx.drawImage(logo, 60, SIZE - 120, logoW, logoH);
-  } catch (e) {
-    console.error("Footer logo error:", e);
+    const bannerPath = path.join(
+      process.cwd(),
+      "lib/social/assets/banner.png"
+    );
+    const banner = await loadImage(bannerPath);
+
+    const FOOTER_HEIGHT = 80;
+    const LEFT_PADDING = 80;
+    const scale = FOOTER_HEIGHT / banner.height;
+
+    ctx.drawImage(
+      banner,
+      LEFT_PADDING,
+      footerY,
+      banner.width * scale,
+      FOOTER_HEIGHT
+    );
+  } catch (err) {
+    console.warn("⚠️ Square footer banner error:", err);
   }
 
-  // FOOTER WEBSITE
-  ctx.fillStyle = "#b91c1c";
   ctx.textAlign = "right";
-  ctx.font = "700 40px Inter";
-  ctx.fillText("www.dealswindfall.com", SIZE - 60, SIZE - 70);
+  setFont(ctx, 38, 400);
+  ctx.fillStyle = "#b91c1c";
+  ctx.fillText("www.dealswindfall.com", SIZE - 80, footerY + 60);
 
   return canvas.toBuffer("image/jpeg", { quality: 0.9 });
-
 }

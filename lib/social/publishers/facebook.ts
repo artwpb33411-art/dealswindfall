@@ -1,3 +1,7 @@
+// Platform entry point
+// Delegates to pipeline-based implementation
+
+
 export async function publishToFacebook(caption: string, base64Image: string) {
   try {
     const PAGE_ID = process.env.FACEBOOK_PAGE_ID!;

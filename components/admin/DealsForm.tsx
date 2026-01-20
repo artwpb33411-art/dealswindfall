@@ -2,15 +2,6 @@
 
 import { useEffect, useState } from "react";
 
-/* -------------------------------------------------------------
-   Constants
-------------------------------------------------------------- */
-//const [error, setError] = useState<string | null>(null);
-
-//const [result, setResult] = useState<any | null>(null);
-//const [error, setError] = useState<string | null>(null);
-
-
 const STORE_TAGS = [
   "",
   "Amazon","Walmart","Target","Home Depot","Costco","Best Buy",
@@ -55,6 +46,9 @@ const DEFAULT_FORM = {
   affiliate_priority: 0,
   sub_category: "",
 hash_tags: "",
+affiliate_short_url: "",
+  hashtags_es: "", // comma or newline separated in UI
+
 
 };
 
@@ -142,6 +136,7 @@ export default function DealsForm() {
         category: data.category || prev.category,
         imageLink: data.image || prev.imageLink,
         productLink: productUrl,
+        
       }));
 
       setMsg("✅ Product info fetched");
@@ -215,7 +210,9 @@ affiliate_priority: form.is_affiliate
   ? Number(form.affiliate_priority) || 0
   : 0,
 
-
+affiliate_short_url: form.is_affiliate
+    ? form.affiliate_short_url?.trim() || null
+    : null,
 
       }),
     });
@@ -348,6 +345,18 @@ if (!res.ok) {
   Affiliate Deal
 </label>
 
+ <input
+      name="affiliate_short_url"
+      value={form.affiliate_short_url}
+      onChange={onChange}
+      placeholder="Affiliate Short URL (optional, e.g. https://amzn.to/...)"
+      className="input"
+    />
+
+    <p className="text-xs text-slate-500">
+      Used for social media comments. If empty, the full affiliate link will be used.
+    </p>
+
 
 {form.is_affiliate && (
   <>
@@ -358,6 +367,8 @@ if (!res.ok) {
       placeholder="Affiliate Source (Amazon, CJ, Impact, etc.)"
       className="input"
     />
+
+   
 
     <select
       name="affiliate_priority"
@@ -372,6 +383,7 @@ if (!res.ok) {
     </select>
   </>
 )}
+
       
       <select name="holidayTag" value={form.holidayTag} onChange={onChange} className="input">
         {HOLIDAY_TAGS.map(t => <option key={t} value={t}>{t || "No Holiday / Event"}</option>)}

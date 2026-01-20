@@ -1,3 +1,5 @@
+
+import { normalizeDeal } from "@/lib/social/normalizeDeal";
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { saveFlyerBufferToSupabase } from "@/lib/social/saveFlyerBuffer"; 
@@ -5,14 +7,16 @@ import { deleteStorageObject } from "@/lib/social/deleteStorageObject";
 import { safeGenerateFlyers } from "@/lib/social/safeGenerateFlyers";
 import type { SelectedDeal } from "@/lib/social/types";
 import { buildCaption } from "@/lib/social/captionBuilder";
+import { postFacebookWithDelayedComment } from "@/lib/social/facebookPostWithDelay";
+import { buildPlatformCaptions } from "@/lib/social/captionBuilder";
 
-import { generateFlyer } from "@/lib/social/flyerGenerator";
-import { generateFlyerSquare } from "@/lib/social/flyers/generateFlyerSquare";
-import { generateFlyerStory } from "@/lib/social/flyers/generateFlyerStory";
+//import { generateFlyer } from "@/lib/social/flyerGenerator";
+//import { generateFlyerSquare } from "@/lib/social/flyers/generateFlyerSquare";
+//import { generateFlyerStory } from "@/lib/social/flyers/generateFlyerStory";
 
 import { publishToX } from "@/lib/social/publishers/x";
 import { publishToTelegram } from "@/lib/social/publishers/telegram";
-import { publishToFacebook } from "@/lib/social/publishers/facebook";
+//import { publishToFacebook } from "@/lib/social/publishers/facebook";
 import { publishToInstagram } from "@/lib/social/publishers/instagram";
 
 import { saveImageToSupabase } from "@/lib/social/saveImage";
@@ -379,24 +383,7 @@ if (available.length === 0) {
 
     // 7️⃣ Pick a raw DB row and map → SelectedDeal
     const raw = available[Math.floor(Math.random() * available.length)];
-
-    const deal: SelectedDeal = {
-      id: raw.id,
-      title: raw.description ?? "Untitled deal",
-      description: raw.notes ?? null,
-      image_link: raw.image_link ?? null,
-      slug: raw.slug ?? null,
-      store_name: raw.store_name ?? null,
-
-      price: raw.current_price ?? null,
-      old_price: raw.old_price ?? null,
-      percent_diff: raw.percent_diff ?? null,
-
-      current_price: raw.current_price ?? null,
-      price_diff: raw.price_diff ?? null,
-      product_link: raw.product_link ?? null,
-      review_link: raw.review_link ?? null,
-    };
+const deal = normalizeDeal(raw);
 
     const logTitle =
       deal.title || deal.description || deal.slug || `Deal #${deal.id}`;
@@ -432,14 +419,13 @@ if (available.length === 0) {
 // 9️⃣ Generate flyers — ensure JPEG output
 console.log("🖨 Generating flyers...");
 
-const flyers = await safeGenerateFlyers(deal, finalImage);
-
-const portraitBuffer = flyers.portrait;
-const squareBuffer = flyers.square;
-const storyBuffer = flyers.story;
-
 const { portrait, square, story } =
-  await safeGenerateFlyers(deal, finalImage);
+  await safeGenerateFlyers(deal);
+
+const portraitBuffer = portrait;
+const squareBuffer = square;
+const storyBuffer = story;
+
 
 const portraitBase64 = portrait.toString("base64");
 const squareBase64 = square.toString("base64");
@@ -503,21 +489,38 @@ const finalHashtags = Array.from(
 
 if (platforms.x) {
   await tryPost("x", () =>
-    publishToX(social.short, squareBase64)
+    publishToX(social.short, square)
   );
 }
 
 if (platforms.telegram) {
   await tryPost("telegram", () =>
-    publishToTelegram(social.text, squareBase64)
+   publishToTelegram(social.text, square)
+
   );
 }
 
 if (platforms.facebook) {
-  await tryPost("facebook", () =>
-    publishToFacebook(social.text, portraitBase64)
-  );
+  await tryPost("facebook", async () => {
+    const { captions, url } = buildPlatformCaptions(
+      deal,
+      aiHashtags,
+      deal.language === "es" ? "es" : "en"
+    );
+
+    return postFacebookWithDelayedComment({
+      pageId: process.env.FACEBOOK_PAGE_ID!,
+      pageAccessToken: process.env.FACEBOOK_PAGE_TOKEN!,
+      caption: captions.facebook.text,
+      flyerImage: portrait, // Buffer ✅
+      isAffiliate: !!deal.is_affiliate,
+      lang: deal.language === "es" ? "es" : "en",
+      dealUrl: url,
+      affiliateUrl: deal.affiliate_url,
+    });
+  });
 }
+
 
 if (platforms.instagram) {
   await tryPost("instagram", async () => {

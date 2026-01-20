@@ -1,3 +1,7 @@
+// Platform entry point
+// Delegates to pipeline-based implementation
+
+
 async function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
@@ -54,7 +58,8 @@ async function waitForInstagramProcessing(
 export async function publishToInstagram(
   caption: string,
   imageUrl: string
-): Promise<any> {
+)
+: Promise<any> {
   try {
     const IG_ID = process.env.INSTAGRAM_BUSINESS_ID!;
     const TOKEN = process.env.INSTAGRAM_LONG_LIVED_TOKEN!;

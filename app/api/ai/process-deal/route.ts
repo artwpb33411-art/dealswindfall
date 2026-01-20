@@ -188,10 +188,11 @@ TASKS
 4. Write a Spanish deal description.
 5. Select ONE category from the allowed list.
 6. Select ONE sub-category that belongs to the category.
-7. Generate 5–6 relevant hash tags.
-8. Calculate an AI quality score (0–100).
-9. Provide a score breakdown.
-10. If store name is missing, infer the store ONLY by matching the product URL domain
+7. Generate 5–6 relevant English hash tags.
+8. Generate 5–6 relevant Spanish hash tags.
+9. Calculate an AI quality score (0–100).
+10. Provide a score breakdown.
+11. If store name is missing, infer the store ONLY by matching the product URL domain
     against the allowed store list.
     - Do NOT invent new store names
     - If no confident match exists, return null
@@ -208,7 +209,8 @@ RESPONSE FORMAT (JSON ONLY)
   "body_es": "",
   "category": "",
   "sub_category": "",
-  "hash_tags": [],
+ "hash_tags_en": [],
+"hash_tags_es": [],
   "ai_score": 0,
   "ai_score_breakdown": {
     "completeness": 0,
@@ -245,7 +247,14 @@ const updatePayload = {
 
   category: parsed.category,
   sub_category: parsed.sub_category,
-  hash_tags: parsed.hash_tags,
+ hash_tags: Array.isArray(parsed.hash_tags_en)
+  ? parsed.hash_tags_en
+  : [],
+
+hashtags_es: Array.isArray(parsed.hash_tags_es)
+  ? parsed.hash_tags_es
+  : null,
+
 store_name: normalizeStoreName(
   parsed.store_name,
   resolvedStore,

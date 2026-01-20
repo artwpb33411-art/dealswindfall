@@ -1,11 +1,16 @@
-export async function publishToTelegram(caption: string, base64Image: string) {
+// lib/social/publishers/telegram.ts
+
+export async function publishToTelegram(
+  caption: string,
+  imageBuffer: Buffer
+) {
   try {
     const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN!;
     const CHAT_ID = process.env.TELEGRAM_CHAT_ID!;
 
     const url = `https://api.telegram.org/bot${BOT_TOKEN}/sendPhoto`;
 
-    // Telegram limit ~1024 chars
+    // Telegram caption limit ~1024 chars
     const cleanCaption =
       caption.length > 1020 ? caption.slice(0, 1017) + "..." : caption;
 
@@ -14,34 +19,45 @@ export async function publishToTelegram(caption: string, base64Image: string) {
     formData.append("caption", cleanCaption);
     formData.append("parse_mode", "HTML");
 
-    const buffer = Buffer.from(base64Image, "base64");
-    const file = new Blob([buffer], { type: "image/png" });
+    // ✅ Directly attach flyer buffer
+    const file = new Blob(
+  [new Uint8Array(imageBuffer)],
+  { type: "image/jpeg" }
+);
 
-    formData.append("photo", file, "deal.png");
+    formData.append("photo", file, "deal.jpg");
 
-    const res = await fetch(url, {
+    let res = await fetch(url, {
       method: "POST",
       body: formData,
     });
 
-    const json = await res.json();
+    let json = await res.json();
 
-    // Telegram common fallback: try without HTML mode
+    // Fallback: retry without parse_mode if Telegram rejects HTML
     if (!res.ok) {
-      console.warn("⚠️ Telegram HTML mode failed, retrying without parse_mode.");
+      console.warn(
+        "⚠️ Telegram HTML mode failed, retrying without parse_mode:",
+        json
+      );
 
       const formData2 = new FormData();
       formData2.append("chat_id", CHAT_ID);
       formData2.append("caption", cleanCaption);
-      formData2.append("photo", file, "deal.png");
+      formData2.append("photo", file, "deal.jpg");
 
-      const res2 = await fetch(url, { method: "POST", body: formData2 });
-      return await res2.json();
+      res = await fetch(url, { method: "POST", body: formData2 });
+      json = await res.json();
+    }
+
+    if (!res.ok) {
+      console.error("❌ Telegram publish failed:", json);
+      return null;
     }
 
     return json;
   } catch (err) {
-    console.error("Telegram publish error:", err);
+    console.error("❌ Telegram publish error:", err);
     return null;
   }
 }
