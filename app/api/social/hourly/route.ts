@@ -349,28 +349,29 @@ console.log(
 
 const baseQuery = supabaseAdmin
   .from("deals")
-  .select(
-    `
-    id,
-    description,
-    notes,
-    description_es,
-    current_price,
-    old_price,
-    price_diff,
-    percent_diff,
-    image_link,
-    product_link,
-    review_link,
-    affiliate_short_url,
-    store_name,
-    slug,
-    published_at,
-    exclude_from_auto,
-    is_affiliate,
-    hash_tags
-    `
-  )
+  .select(`
+  id,
+  description,
+  notes,
+  description_es,
+  notes_es,
+  flyer_text_en,
+  flyer_text_es,
+  current_price,
+  old_price,
+  percent_diff,
+  image_link,
+  product_link,
+  review_link,
+  store_name,
+  slug,
+  published_at,
+  is_affiliate,
+  hash_tags,
+  hashtags_es,
+  affiliate_short_url
+`)
+
   .eq("status", "Published")
   .eq("exclude_from_auto", false)
   .in("store_name", allowedStores)
@@ -442,7 +443,7 @@ if (!rawDeals || rawDeals.length === 0) {
 }
 
 // 6.A️⃣ Exclude deals posted recently (hard dedupe)
-const DEDUPE_HOURS = 36;
+const DEDUPE_HOURS = 12;
 const dedupeSince = new Date(
   now.getTime() - DEDUPE_HOURS * 60 * 60 * 1000
 ).toISOString();
@@ -468,7 +469,7 @@ let available = rawDeals
   .filter((d: any) => !recentlyPostedIds.has(d.id))
 
   // Discount sanity check
-  .filter((d: any) => (d.percent_diff ?? 0) < 60);
+ // .filter((d: any) => (d.percent_diff ?? 0) < 60);
 const ratioEnabled = settings.social_enable_ratios ?? true;
 
 let selectedRawDeal: any;
@@ -493,15 +494,14 @@ if (affiliatePreferred.length > 0) {
   candidates = affiliatePreferred;
 }
 // 2️⃣ Language preference (CRITICAL)
-  const languageFiltered = candidates.filter(d =>
-    postLang === "es"
-      ? !!d.description_es
-      : true
-  );
+ const languageFiltered = candidates.filter(d =>
+  postLang === "es"
+    ? !!(d.flyer_text_es || d.description_es || d.notes_es)
+    : true
+);
 
-  if (languageFiltered.length > 0) {
-    candidates = languageFiltered;
-  }
+if (languageFiltered.length > 0) candidates = languageFiltered;
+
 // Language preference
 
 // Deterministic final pick (oldest-first)
@@ -599,7 +599,8 @@ if (!raw) {
     );
 
     // 8️⃣ Prepare image
-    let finalImage: string | null = deal.image_link;
+   let finalImage: string | null = deal.image_link ?? null;
+
 
     if (finalImage) {
       try {
@@ -639,7 +640,10 @@ const storyBase64 = story.toString("base64");
 
     // 🔟 Build captions (long + short + URL)
 
-const aiHashtags = normalizeHashtags(raw.hash_tags);
+//const aiHashtags = normalizeHashtags(raw.hash_tags);
+const aiHashtags = normalizeHashtags(
+  postLang === "es" ? raw.hashtags_es : raw.hash_tags
+);
 
 // Always include brand hashtag
 const finalHashtags = Array.from(
@@ -650,7 +654,8 @@ const finalHashtags = Array.from(
 );
 
 
-  const social = buildCaption(deal, aiHashtags, postLang);
+  const social = buildCaption(deal, finalHashtags, postLang);
+
 
 
 
@@ -714,22 +719,26 @@ if (platforms.telegram) {
 
 if (platforms.facebook) {
   await tryPost("facebook", async () => {
-    const { captions, url } = buildPlatformCaptions(
-      deal,
-      aiHashtags,
-      postLang
-    );
+  const { captions, url } = buildPlatformCaptions(
+  deal,
+  finalHashtags,
+  postLang
+);
 
-    return postFacebookWithDelayedComment({
-      pageId: process.env.FACEBOOK_PAGE_ID!,
-      pageAccessToken: process.env.FACEBOOK_PAGE_TOKEN!,
-      caption: captions.facebook.text,
-      flyerImage: portrait, // Buffer ✅
-      isAffiliate: !!deal.is_affiliate,
-      lang: postLang,
-      dealUrl: url,
-      affiliateUrl: deal.affiliate_short_url,
-    });
+
+   return postFacebookWithDelayedComment({
+  pageId: process.env.FACEBOOK_PAGE_ID!,
+  pageAccessToken: process.env.FACEBOOK_PAGE_TOKEN!,
+  caption: captions.facebook.text,
+  flyerImage: portrait,
+  isAffiliate: !!deal.is_affiliate,
+  lang: postLang,
+  dealUrl: url,
+  affiliateUrl: deal.affiliate_url ?? undefined,
+  productLink: deal.product_link ?? undefined,
+});
+
+
   });
 }
 

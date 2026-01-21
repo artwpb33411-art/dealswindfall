@@ -183,8 +183,10 @@ ${categoryTree}
 TASKS
 -----
 1. Create a concise English deal title (max 80 characters).
+1a. Create a short English flyer headline (max 50 characters, no emojis).
 2. Write an English deal description (60–120 words).
 3. Create a Spanish deal title.
+3a. Create a short Spanish flyer headline (max 50 characters, no emojis).
 4. Write a Spanish deal description.
 5. Select ONE category from the allowed list.
 6. Select ONE sub-category that belongs to the category.
@@ -197,20 +199,29 @@ TASKS
     - Do NOT invent new store names
     - If no confident match exists, return null
 
+FLYER HEADLINE RULES
+-------------------
+- Flyer headlines must be product-specific
+- Avoid generic phrases like "Great Deal", "Hot Offer", "Best Price"
+- Focus on product type, brand, or key feature
+- Must be readable at a glance on an image
+- Max 50 characters
 
 
 RESPONSE FORMAT (JSON ONLY)
 ---------------------------
 {
-"store_name": null,
+  "store_name": null,
   "title_en": "",
+  "flyer_text_en": "",
   "body_en": "",
   "title_es": "",
+  "flyer_text_es": "",
   "body_es": "",
   "category": "",
   "sub_category": "",
- "hash_tags_en": [],
-"hash_tags_es": [],
+  "hash_tags_en": [],
+  "hash_tags_es": [],
   "ai_score": 0,
   "ai_score_breakdown": {
     "completeness": 0,
@@ -219,8 +230,8 @@ RESPONSE FORMAT (JSON ONLY)
     "category_relevance": 0,
     "seo_readiness": 0
   }
-    
 }
+
 `;
 
     const ai = await openai.chat.completions.create({
@@ -254,6 +265,8 @@ const updatePayload = {
 hashtags_es: Array.isArray(parsed.hash_tags_es)
   ? parsed.hash_tags_es
   : null,
+flyer_text_en: parsed.flyer_text_en || null,
+flyer_text_es: parsed.flyer_text_es || null,
 
 store_name: normalizeStoreName(
   parsed.store_name,

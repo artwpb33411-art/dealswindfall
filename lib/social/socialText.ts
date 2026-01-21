@@ -1,24 +1,23 @@
 export const SOCIAL_TEXT = {
   en: {
     dealAlert: "🔥 Deal Alert",
-    limitedTime: "⏰ Limited-time deal — prices may change fast.",
-    moreDeals: "🌐 More deals at DealsWindfall.com",
+    limitedTime: "⏰ Price verified at time of posting.",
+    moreDeals: "🌐 More verified deals at https://www.dealswindfall.com",
     linkInComments: "👇 Deal link in comments",
-    grabNow: "👇 Grab it now:",
+    grabNow: "👇 View the deal here:",
     viewDeal: "👉 View deal:",
-    off: "OFF", // ✅ ADD
+    off: "OFF",
   },
 
   es: {
-    dealAlert: "🔥 Oferta Imperdible",
-    limitedTime: "⏰ Oferta por tiempo limitado — el precio puede cambiar.",
-    moreDeals: "🌐 Más ofertas en DealsWindfall.com",
+    dealAlert: "🔥 Oferta Destacada",
+    limitedTime: "⏰ Precio verificado al momento de publicar.",
+    moreDeals: "🌐 Más ofertas verificadas en https://www.dealswindfall.com",
     linkInComments: "👇 Enlace en los comentarios",
-    grabNow: "👇 Consíguelo aquí:",
+    grabNow: "👇 Ver la oferta aquí:",
     viewDeal: "👉 Ver oferta:",
-    off: "DE DESCUENTO", // ✅ ADD
+    off: "DE DESCUENTO",
   },
 } as const;
-
 
 export type SocialLang = keyof typeof SOCIAL_TEXT;

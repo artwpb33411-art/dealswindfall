@@ -6,6 +6,9 @@ import { loadFonts } from "../fonts";
 import { setFont } from "../canvasFont";
 import type { FlyerLang } from "../flyerText";
 import { FLYER_TEXT } from "../flyerText";
+import { resolveFlyerTitle } from "../utils/resolveFlyerTitle";
+import { normalizeFlyerTitle } from "../utils/normalizeFlyerTitle";
+
 
 loadFonts();
 
@@ -74,18 +77,20 @@ Keys: ${Object.keys(deal).join(", ")}`
 
 const t = FLYER_TEXT[lang];
 
+console.log("FLYER TITLE DEBUG:", {
+  flyer_text_en: deal.flyer_text_en,
+  description: deal.description,
+  notes: deal.notes,
+});
 
   /* ---------- TITLE ---------- */
- const safeTitle: string =
-  lang === "es"
-    ? deal.description_es?.trim() ||
-      deal.title?.trim() ||
-      deal.description?.trim() ||
-      t.fallbackTitle
-    : deal.title?.trim() ||
-      deal.description?.trim() ||
-      deal.slug ||
-      t.fallbackTitle;
+ const rawTitle = resolveFlyerTitle(
+  deal,
+  lang,
+  t.fallbackTitle
+);
+
+const safeTitle = normalizeFlyerTitle(rawTitle);
 
 
   ctx.fillStyle = "#111827";

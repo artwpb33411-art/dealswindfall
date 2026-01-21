@@ -6,6 +6,11 @@ import { loadFonts } from "./fonts";
 import { setFont } from "./canvasFont";
 import type { CanvasRenderingContext2D } from "canvas";
 
+import { resolveFlyerTitle } from "./utils/resolveFlyerTitle";
+import { normalizeFlyerTitle } from "./utils/normalizeFlyerTitle";
+
+
+
 loadFonts();
 
 const WIDTH = 1080;
@@ -75,17 +80,13 @@ Keys: ${Object.keys(deal).join(", ")}`
   const t = FLYER_TEXT[lang];
 
   /* ---------- TITLE ---------- */
+const rawTitle = resolveFlyerTitle(
+  deal,
+  lang,
+  t.fallbackTitle
+);
 
- const safeTitle: string =
-  lang === "es"
-    ? deal.description_es?.trim() ||
-      deal.title?.trim() ||
-      deal.description?.trim() ||
-      t.fallbackTitle
-    : deal.title?.trim() ||
-      deal.description?.trim() ||
-      deal.slug ||
-      t.fallbackTitle;
+const safeTitle = normalizeFlyerTitle(rawTitle);
 
 
 
@@ -159,6 +160,11 @@ Keys: ${Object.keys(deal).join(", ")}`
   ctx.fillText(`${percent}% ${t.off}`, WIDTH / 2, badgeY + 160);
 
   /* ---------- FOOTER ---------- */
+console.log("FLYER TITLE DEBUG:", {
+  flyer_text_en: deal.flyer_text_en,
+  description: deal.description,
+  notes: deal.notes,
+});
 
   const footerY = HEIGHT - 150;
 
@@ -191,4 +197,5 @@ Keys: ${Object.keys(deal).join(", ")}`
   ctx.fillText(t.website, WIDTH - 80, footerY + 65);
 
   return canvas.toBuffer("image/jpeg", { quality: 0.9 });
+  
 }

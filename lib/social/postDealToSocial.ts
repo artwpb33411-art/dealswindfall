@@ -13,19 +13,25 @@ import { getFlyerBaseImage } from "./image/getFlyerBaseImage";
 import { saveFlyerBufferToSupabase } from "./saveFlyerBuffer";
 import { deleteStorageObject } from "./deleteStorageObject";
 
-
+import { normalizeDeal } from "./normalizeDeal";
 
 export async function postDealToSocial({
   deal,
   platforms,
-  hashtags = [],
-  force = false,
+  hashtags,
+  force,
 }: {
   deal: any;
   platforms: string[];
-  hashtags?: string[];
+  hashtags: string[];
   force?: boolean;
 }) {
+
+  // 🔒 SINGLE SOURCE OF TRUTH
+  const normalizedDeal = normalizeDeal(deal);
+
+  // ⛔ DO NOT USE `deal` BELOW THIS POINT
+
   const results: Record<string, any> = {};
   const posted: string[] = [];
 
@@ -115,6 +121,11 @@ if (platforms.includes("instagram")) {
 
   await deleteStorageObject(igFile.bucket, igFile.path);
 }
+console.log("AFFILIATE CHECK", {
+  is_affiliate: deal.is_affiliate,
+  affiliate_url: deal.affiliate_url,
+  product_link: deal.product_link,
+});
 
 
   return { posted, results };

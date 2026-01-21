@@ -1,6 +1,5 @@
 import fetch, { Response } from "node-fetch";
 import FormData from "form-data";
-//import fetch from "node-fetch";
 
 export async function publishFacebookPost({
   pageId,
@@ -20,13 +19,11 @@ export async function publishFacebookPost({
     const formData = new FormData();
 
     formData.append("access_token", pageAccessToken);
-    formData.append("message", message);
-
-    formData.append(
-      "source",
-      new Blob([new Uint8Array(imageBuffer)], { type: "image/jpeg" }),
-      "flyer.jpg"
-    );
+    formData.append("caption", message); // ✅ Facebook expects caption for photos
+    formData.append("source", imageBuffer, {
+      filename: "flyer.jpg",
+      contentType: "image/jpeg",
+    });
 
     res = await fetch(
       `https://graph.facebook.com/v19.0/${pageId}/photos`,
@@ -58,7 +55,6 @@ export async function publishFacebookPost({
 
   return { postId: json.id };
 }
-
 
 export async function publishFacebookComment(
   postId: string,

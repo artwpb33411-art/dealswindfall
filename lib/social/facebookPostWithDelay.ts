@@ -19,22 +19,24 @@ export async function postFacebookWithDelayedComment({
   pageId,
   pageAccessToken,
   caption,
-  flyerImage,              // ✅ add this
+  flyerImage,
   isAffiliate,
   lang,
   dealUrl,
   affiliateUrl,
+  productLink, // ✅ ADD THIS
 }: {
   pageId: string;
   pageAccessToken: string;
   caption: string;
-  flyerImage?: Buffer;     // ✅ Buffer, optional
+  flyerImage?: Buffer;
   isAffiliate: boolean;
   lang: "en" | "es";
   dealUrl: string;
   affiliateUrl?: string;
-})
-{
+  productLink?: string; // ✅ ADD THIS
+}) {
+
   // 🔑 SANITY CHECK — ADD THIS HERE
   console.log(
     "🔑 FB TOKEN PREFIX:",
@@ -50,11 +52,12 @@ export async function postFacebookWithDelayedComment({
   console.log("📘 FB CAPTION:", caption);
 
   const { postId } = await publishFacebookPost({
-    pageId,
-    pageAccessToken,
-    message: caption,
-  //  imageUrl: flyerImageUrl,
-  });
+  pageId,
+  pageAccessToken,
+  message: caption,
+  imageBuffer: flyerImage, // ✅ PASS IMAGE
+});
+
 
 
   // 2️⃣ Delay
@@ -69,11 +72,14 @@ console.log("🆔 FB POST CREATED:", postId);
 
   // 3️⃣ Build comment
   const comment = await buildFacebookComment({
-    isAffiliate,
-    lang,
-    dealUrl,
-    affiliateUrl,
-  });
+  isAffiliate,
+  lang,
+  dealUrl,
+  affiliateShortUrl: affiliateUrl, // mapped from normalizeDeal()
+ productLink,
+
+});
+
 
   // 4️⃣ Publish comment
   await publishFacebookComment(

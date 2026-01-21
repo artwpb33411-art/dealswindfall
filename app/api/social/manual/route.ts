@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { postDealToSocial } from "@/lib/social/postDealToSocial";
+import { normalizeDeal } from "@/lib/social/normalizeDeal";
 
 export const runtime = "nodejs";
 
@@ -34,11 +35,8 @@ export async function POST(req: Request) {
 
   const hashtags =
     Array.isArray(deal.hash_tags) ? deal.hash_tags : [];
+const normalizedDeal = normalizeDeal(deal);
 
- const normalizedDeal = {
-  ...deal,
-  title: deal.description ?? "Untitled deal",
-};
 
 const result = await postDealToSocial({
   deal: normalizedDeal,

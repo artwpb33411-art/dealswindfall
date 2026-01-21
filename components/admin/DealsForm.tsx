@@ -317,17 +317,19 @@ if (!res.ok) {
 
       {/* Links */}
       <input name="imageLink" value={form.imageLink} onChange={onChange} placeholder="Image Link" className="input" />
-      <input name="productLink" value={form.productLink} onChange={onChange} placeholder="Product Link" className="input" />
+      <input name="productLink" value={form.productLink} onChange={onChange} placeholder=" Long URL compulsory" className="input" />
 
-       {/* AI toggle */}
-      <label className="flex items-center gap-2 text-sm">
-        <input type="checkbox" checked={generateAI} onChange={e => setGenerateAI(e.target.checked)} />
-        Auto-generate AI content (EN + ES)
-      </label>
+    <input
+      name="affiliate_short_url"
+      value={form.affiliate_short_url}
+      onChange={onChange}
+      placeholder="Affiliate Short URL (optional, e.g. https://amzn.to/...)"
+      className="input"
+    />
 
-      <button type="submit" disabled={saving} className="w-full bg-blue-600 text-white p-2 rounded">
-        {saving ? "Saving..." : "Save Deal" }
-      </button>
+    <p className="text-xs text-slate-500">
+      Used for social media comments. If empty, the full affiliate link will be used.
+    </p>
 
 
 <label className="flex items-center gap-2 text-sm">
@@ -345,17 +347,6 @@ if (!res.ok) {
   Affiliate Deal
 </label>
 
- <input
-      name="affiliate_short_url"
-      value={form.affiliate_short_url}
-      onChange={onChange}
-      placeholder="Affiliate Short URL (optional, e.g. https://amzn.to/...)"
-      className="input"
-    />
-
-    <p className="text-xs text-slate-500">
-      Used for social media comments. If empty, the full affiliate link will be used.
-    </p>
 
 
 {form.is_affiliate && (
@@ -384,7 +375,16 @@ if (!res.ok) {
   </>
 )}
 
-      
+          {/* AI toggle */}
+      <label className="flex items-center gap-2 text-sm">
+        <input type="checkbox" checked={generateAI} onChange={e => setGenerateAI(e.target.checked)} />
+        Auto-generate AI content (EN + ES)
+      </label>
+
+      <button type="submit" disabled={saving} className="w-full bg-blue-600 text-white p-2 rounded">
+        {saving ? "Saving..." : "Save Deal" }
+      </button>
+
       <select name="holidayTag" value={form.holidayTag} onChange={onChange} className="input">
         {HOLIDAY_TAGS.map(t => <option key={t} value={t}>{t || "No Holiday / Event"}</option>)}
       </select>

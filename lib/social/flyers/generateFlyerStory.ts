@@ -7,7 +7,8 @@ import { setFont } from "../canvasFont";
 import type { CanvasRenderingContext2D } from "canvas";
 import type { FlyerLang } from "../flyerText";
 import { FLYER_TEXT } from "../flyerText";
-
+import { resolveFlyerTitle } from "../utils/resolveFlyerTitle";
+import { normalizeFlyerTitle } from "../utils/normalizeFlyerTitle";
 
 
 
@@ -91,16 +92,13 @@ Keys: ${Object.keys(deal).join(", ")}`
   const t = FLYER_TEXT[lang];
 
   /* ---------- TITLE ---------- */
-  const safeTitle: string =
-  lang === "es"
-    ? deal.description_es?.trim() ||
-      deal.title?.trim() ||
-      deal.description?.trim() ||
-      t.fallbackTitle
-    : deal.title?.trim() ||
-      deal.description?.trim() ||
-      deal.slug ||
-      t.fallbackTitle;
+ const rawTitle = resolveFlyerTitle(
+  deal,
+  lang,
+  t.fallbackTitle
+);
+
+const safeTitle = normalizeFlyerTitle(rawTitle);
 
 
   ctx.fillStyle = "#111827";

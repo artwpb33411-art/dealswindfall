@@ -18,6 +18,26 @@ function detectLanguage(raw: any): "en" | "es" {
     : "en";
 }
 
+function resolveHashtags(
+  rawDeal: any,
+  lang: "en" | "es"
+): string[] {
+  const source =
+    lang === "es"
+      ? rawDeal.hashtags_es
+      : rawDeal.hash_tags;
+
+  if (Array.isArray(source)) return source;
+
+  if (typeof source === "string") {
+    return source
+      .split(",")
+      .map(t => t.trim())
+      .filter(Boolean);
+  }
+
+  return [];
+}
 
 export async function GET() {
   const now = new Date();
@@ -74,28 +94,29 @@ export async function GET() {
   // 5) Fetch candidate deals
   const baseQuery = supabaseAdmin
     .from("deals")
-    .select(
-      `
-      id,
-      description,
-      notes,
-      current_price,
-      old_price,
-      price_diff,
-      percent_diff,
-      description_es,
-      image_link,
-      product_link,
-      review_link,
-      store_name,
-      slug,
-      published_at,
-      exclude_from_auto,
-      is_affiliate,
-      hash_tags,
-       affiliate_short_url
-    `
-    )
+    .select(`
+  id,
+  description,
+  notes,
+  description_es,
+  notes_es,
+  flyer_text_en,
+  flyer_text_es,
+  current_price,
+  old_price,
+  percent_diff,
+  image_link,
+  product_link,
+  review_link,
+  store_name,
+  slug,
+  published_at,
+  is_affiliate,
+  hash_tags,
+  hashtags_es,
+  affiliate_short_url
+`)
+
     .eq("status", "Published")
     .eq("exclude_from_auto", false)
     .in("store_name", allowedStores)
@@ -248,6 +269,7 @@ if (ratioEnabled) {
     square: square.toString("base64"),
     story: story.toString("base64"),
   };
+//const hashtags = resolveHashtags(rawDeal, postLang);
 
   const hashtags = Array.isArray(selectedRawDeal.hash_tags)
     ? selectedRawDeal.hash_tags
