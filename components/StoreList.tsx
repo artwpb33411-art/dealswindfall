@@ -16,6 +16,7 @@ const stores = [
 { name: "Sam's Club", logo: "/logos/sams.png" },
   { name: "Costco", logo: "/logos/costco.png" },
   { name: "Home Depot", logo: "/logos/home depot.jpg" },
+   { name: "T.J.Maxx.", logo: "/logos/TJMax.png" },
   { name: "Staples", logo: "/logos/staples.png" },
   { name: "Office Depot", logo: "/logos/office depot.svg" },
   

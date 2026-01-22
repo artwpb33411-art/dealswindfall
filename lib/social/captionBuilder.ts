@@ -150,11 +150,30 @@ ${t.limitedTime}
 ${t.moreDeals}
 `.trim();
 
+const fbMoreDeals =
+  lang === "en"
+    ? "🌐 More verified deals on DealsWindfall"
+    : "🌐 Más ofertas verificadas en DealsWindfall";
+
+const facebookCaption = `
+${t.dealAlert}: ${title}
+
+${price}${discount}${store}
+
+${t.limitedTime}
+${fbMoreDeals}
+
+${t.linkInComments}
+`.trim();
+
+
+
+
+
+
   const captions: PlatformCaptions = {
     facebook: {
-      text: escapeHtml(
-        `${baseCaption}\n\n${t.linkInComments}${hashtagText}`
-      ),
+      text: escapeHtml(facebookCaption),
       firstComment: url,
     },
 
@@ -175,8 +194,8 @@ ${t.moreDeals}
         trimTo(
           [
             title,
-            `${price}${discount}${store}`,
-            `👉 ${url}`,
+            `\n${price}${discount}${store}\n`,
+            `👉 ${url}\n`,
             finalHashtags.join(" "),
           ].join("\n"),
           280

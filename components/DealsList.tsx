@@ -105,14 +105,32 @@ export default function DealsList({
 }
 
   if (showHotDeals) {
-    query = query.gte("percent_diff", 30);
-  }
+  query = query
+    .eq("is_affiliate", true)
+    .gte("percent_diff", 20);
+}
 
-  if (debouncedSearch) {
+
+ if (debouncedSearch) {
+  const tokens: string[] = debouncedSearch
+  .trim()
+  .toLowerCase()
+  .split(/\s+/)
+  .filter((t: string) => t.length > 1);
+
+
+  for (const token of tokens) {
     query = query.or(
-      `description.ilike.%${debouncedSearch}%,description_es.ilike.%${debouncedSearch}%,store_name.ilike.%${debouncedSearch}%,category.ilike.%${debouncedSearch}%`
+      [
+        `description.ilike.%${token}%`,
+        `description_es.ilike.%${token}%`,
+        `store_name.ilike.%${token}%`,
+        `sub_category.ilike.%${token}%`,
+        `category.ilike.%${token}%`
+      ].join(",")
     );
   }
+}
 
   
 

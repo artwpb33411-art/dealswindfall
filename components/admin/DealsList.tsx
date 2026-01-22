@@ -338,7 +338,9 @@ function renderAIStatus(deal: any) {
       notes: editDeal.notes,
       description_es: editDeal.description_es,
       notes_es: editDeal.notes_es,
-
+      flyer_text_en: editDeal.flyer_text_en, // ✅ FIX
+  flyer_text_es: editDeal.flyer_text_es, // ✅ FIX
+store_name: editDeal.store_name, 
       current_price: editDeal.current_price,
       old_price: editDeal.old_price,
 

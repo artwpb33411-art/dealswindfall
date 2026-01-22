@@ -51,7 +51,6 @@ function extractHostname(url: string): string | null {
     return null;
   }
 }
-
 function resolveStoreFromUrl(
   productUrl: string | null,
   stores: { store_name: string; store_url: string | null }[]
@@ -68,14 +67,13 @@ function resolveStoreFromUrl(
       .split(",")
       .map(d => d.trim().toLowerCase());
 
-    if (domains.some(d => host.includes(d))) {
+    if (domains.some(d => host === d || host.endsWith(`.${d}`))) {
       return store.store_name;
     }
   }
 
   return null;
 }
-
 
 function safeJsonParse(raw: string) {
   return JSON.parse(raw.replace(/```json/gi, "").replace(/```/g, "").trim());
@@ -85,14 +83,16 @@ function normalizeStoreName(
   resolvedStore: string | null,
   stores: { store_name: string }[]
 ): string | null {
-  const candidate = aiStore || resolvedStore;
-  if (!candidate) return null;
+  // URL-based resolution ALWAYS wins
+  if (resolvedStore) return resolvedStore;
+
+  if (!aiStore) return null;
 
   const match = stores.find(
-    s => s.store_name.toLowerCase() === candidate.toLowerCase()
+    s => s.store_name.toLowerCase() === aiStore.toLowerCase()
   );
 
-  return match ? match.store_name : candidate;
+  return match ? match.store_name : null;
 }
 
 //const metrics = computeMetrics(deal.old_price, deal.current_price);
@@ -206,6 +206,13 @@ FLYER HEADLINE RULES
 - Focus on product type, brand, or key feature
 - Must be readable at a glance on an image
 - Max 50 characters
+
+
+IMPORTANT STORE RULE
+--------------------
+- Do NOT default to Amazon
+- Only return "Amazon" if the product URL domain is amazon.com or amzn.to
+
 
 
 RESPONSE FORMAT (JSON ONLY)

@@ -17,4 +17,5 @@ HP: "/stores/hp.png",
 Woot: "/stores/woot.png",
 "Sam's Club": "/stores/samsclub.png",
 "Macy's": "/stores/macys.png",
+"T.J.Maxx.": "/stores/tjmaxx.png",
 };
