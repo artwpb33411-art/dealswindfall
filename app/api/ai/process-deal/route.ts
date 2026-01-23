@@ -83,9 +83,15 @@ function normalizeStoreName(
   resolvedStore: string | null,
   stores: { store_name: string }[]
 ): string | null {
-  // URL-based resolution ALWAYS wins
-  if (resolvedStore) return resolvedStore;
+  // 1️⃣ URL-based resolution always wins
+  if (resolvedStore) {
+    const match = stores.find(
+      s => s.store_name.toLowerCase() === resolvedStore.toLowerCase()
+    );
+    return match ? match.store_name : resolvedStore;
+  }
 
+  // 2️⃣ AI fallback (only allowed stores)
   if (!aiStore) return null;
 
   const match = stores.find(
@@ -94,6 +100,7 @@ function normalizeStoreName(
 
   return match ? match.store_name : null;
 }
+
 
 //const metrics = computeMetrics(deal.old_price, deal.current_price);
 
@@ -156,7 +163,8 @@ export async function POST(req: Request) {
 const resolvedStore =
   resolveStoreFromUrl(deal.product_link, stores || []) ||
   deal.store_name ||
-  "Unknown";
+  null;
+
 
       
 
@@ -279,7 +287,8 @@ store_name: normalizeStoreName(
   parsed.store_name,
   resolvedStore,
   stores || []
-),
+) ?? "Unknown",
+
 
 
   ...metrics,
