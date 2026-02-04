@@ -459,14 +459,38 @@ const recentlyPostedIds = new Set(
   (recentPosts ?? []).map((r: any) => r.deal_id)
 );
 
-
-// 6.1 Remove *last posted* deal (no immediate duplicates)
 let available = rawDeals
-  // Safety net: last deal
   .filter((d: any) => d.id !== state.social_last_deal)
+  .filter((d: any) => !recentlyPostedIds.has(d.id));
 
-  // Hard dedupe: recently posted
-  .filter((d: any) => !recentlyPostedIds.has(d.id))
+if (available.length === 0) {
+  console.log("❌ No qualified deals available (all are duplicates/recent).");
+
+  await supabaseAdmin.from("auto_publish_logs").insert({
+    run_time: now.toISOString(),
+    action: "social_skip",
+    deals_published: 0,
+    message: "No qualified deals (duplicates/recently posted).",
+  });
+
+  const alignedNow = new Date(Math.floor(now.getTime() / 60000) * 60000);
+  const nextSocialRun = new Date(
+    alignedNow.getTime() + intervalMinutes * 60_000
+  ).toISOString();
+
+  await supabaseAdmin
+    .from("auto_publish_state")
+    .update({
+      social_last_run: now.toISOString(),
+      social_last_count: 0,
+      social_next_run: nextSocialRun,
+      updated_at: now.toISOString(),
+    })
+    .eq("id", 1);
+
+  return NextResponse.json({ skipped: true, reason: "no qualified deals" });
+}
+
 
   // Discount sanity check
  // .filter((d: any) => (d.percent_diff ?? 0) < 60);
@@ -535,6 +559,7 @@ if (postLang === "es" && !deal.description_es) {
 
 
 // 6.3 If no qualified deals → DO NOT POST AT ALL (option A for now)
+/*
 if (available.length === 0) {
   console.log(
     "❌ No qualified deals available (all are duplicates or >= 60% discount)."
@@ -571,7 +596,7 @@ if (available.length === 0) {
     reason: "no qualified deals",
   });
 }
-
+*/
 // 6.4 Pick one randomly from remaining pool
 //const raw = available[Math.floor(Math.random() * available.length)];
 
@@ -701,70 +726,55 @@ const finalHashtags = Array.from(
     throw err;
   }
 }
+const safeTryPost = (platform: string, fn: () => Promise<any>) =>
+  tryPost(platform, fn).catch(() => null);
 
 // 🔟.5️⃣ Publish to enabled platforms
-
 if (platforms.x) {
-  await tryPost("x", () =>
+  await safeTryPost("x", () =>
     publishToX(social.short, square)
   );
 }
 
 if (platforms.telegram) {
-  await tryPost("telegram", () =>
-   publishToTelegram(social.text, square)
-
+  await safeTryPost("telegram", () =>
+    publishToTelegram(social.text, square)
   );
 }
 
 if (platforms.facebook) {
-  await tryPost("facebook", async () => {
-  const { captions, url } = await buildPlatformCaptions(
-  deal,
-  finalHashtags,
-  postLang
-);
+  await safeTryPost("facebook", async () => {
+    const { captions, url } = await buildPlatformCaptions(
+      deal,
+      finalHashtags,
+      postLang
+    );
 
-
-   return postFacebookWithDelayedComment({
-  pageId: process.env.FACEBOOK_PAGE_ID!,
-  pageAccessToken: process.env.FACEBOOK_PAGE_TOKEN!,
-  caption: captions.facebook.text,
-  flyerImage: portrait,
-  isAffiliate: !!deal.is_affiliate,
-  lang: postLang,
-  dealUrl: url,
-  //affiliateUrl: deal.affiliate_url ?? undefined,
-  //productLink: deal.product_link ?? undefined,
-});
-
-
+    return postFacebookWithDelayedComment({
+      pageId: process.env.FACEBOOK_PAGE_ID!,
+      pageAccessToken: process.env.FACEBOOK_PAGE_TOKEN!,
+      caption: captions.facebook.text,
+      flyerImage: portrait,
+      isAffiliate: !!deal.is_affiliate,
+      lang: postLang,
+      dealUrl: url,
+    });
   });
 }
-
 
 if (platforms.instagram) {
-  await tryPost("instagram", async () => {
+  await safeTryPost("instagram", async () => {
     const stored = await saveFlyerBufferToSupabase(portraitBuffer, "jpg");
 
-    try {
-      const res = await publishToInstagram(
-        social.text,
-        stored.publicUrl
-      );
+    const res = await publishToInstagram(
+      social.text,
+      stored.publicUrl
+    );
 
-      // ✅ cleanup after successful publish
-      await deleteStorageObject(stored.bucket, stored.path);
-
-      return res;
-    } catch (err) {
-      // ❌ keep file if publish fails
-      throw err;
-    }
+    await deleteStorageObject(stored.bucket, stored.path);
+    return res;
   });
 }
-
-
 
 
     // 1️⃣1️⃣ Update scheduler state (CRON and manual both)
