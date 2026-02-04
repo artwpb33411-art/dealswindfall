@@ -49,11 +49,7 @@ export default function OutboundDealCTA({
         {label}
       </a>
 
-      {store && (
-        <p className="text-xs text-slate-400">
-          You’ll be redirected to {store} to complete your purchase
-        </p>
-      )}
+    
     </div>
   );
 }

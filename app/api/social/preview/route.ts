@@ -26,8 +26,8 @@ const postLang: "en" | "es" = "en";
   const flyers = await safeGenerateFlyers(deal, postLang);
 
   // 4️⃣ Generate captions
-  const social = buildCaption(deal, []);
-  const platform = buildPlatformCaptions(deal, [], "en");
+  const social = await buildCaption(deal, []);
+  const platform = await buildPlatformCaptions(deal, [], "en");
 
   return NextResponse.json({
     deal: {
@@ -42,10 +42,11 @@ const postLang: "en" | "es" = "en";
       story: flyers.story.toString("base64"),
     },
     captions: {
-      facebook: platform.captions.facebook.text,
-      instagram: social.text,
-      telegram: social.text,
-      x: social.short,
-    },
+  facebook: platform.captions.facebook.text,
+  instagram: platform.captions.instagram.text,
+  telegram: platform.captions.telegram.text,
+  x: platform.captions.x.text,
+}
+,
   });
 }

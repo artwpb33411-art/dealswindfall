@@ -1,5 +1,10 @@
 import type { SelectedDeal } from "./types";
 import { SOCIAL_TEXT, SocialLang } from "./socialText";
+import { getSocialTextDynamic } from "@/lib/social/variantText";
+
+import { getCaptionTextDynamic } from "./getCaptionTextDynamic";
+//import { SOCIAL_TEXT } from "./socialText";
+
 
 export type Platform = "facebook" | "instagram" | "telegram" | "x";
 
@@ -36,11 +41,13 @@ function formatPrice(deal: SelectedDeal): string {
 }
 
 function buildDiscount(deal: SelectedDeal, lang: SocialLang): string {
-  const t = SOCIAL_TEXT[lang];
+  const off = SOCIAL_TEXT[lang].off;
+
   return deal.percent_diff != null
-    ? ` (${deal.percent_diff}% ${t.off})`
+    ? ` (${deal.percent_diff}% ${off})`
     : "";
 }
+
 
 function buildStore(deal: SelectedDeal, lang: SocialLang): string {
   if (!deal.store_name) return "";
@@ -66,12 +73,12 @@ function trimTo(str: string, max: number): string {
 
 /* ---------------- simple caption ---------------- */
 
-export function buildCaption(
+export async function buildCaption(
   deal: SelectedDeal,
   hashtags: string[] = [],
   lang: SocialLang = "en"
-): SocialContent {
-  const t = SOCIAL_TEXT[lang];
+): Promise<SocialContent> {
+  const t = await getCaptionTextDynamic(lang, deal.id);
   const title = resolveTitle(deal, lang);
   const price = formatPrice(deal);
   const discount = buildDiscount(deal, lang);
@@ -115,13 +122,12 @@ ${url}${hashtagText}
 }
 
 /* ---------------- platform captions ---------------- */
-
-export function buildPlatformCaptions(
+export async function buildPlatformCaptions(
   deal: SelectedDeal,
   hashtags: string[] = [],
   lang: SocialLang = "en"
-): { captions: PlatformCaptions; url: string } {
-  const t = SOCIAL_TEXT[lang];
+): Promise<{ captions: PlatformCaptions; url: string }> {
+  const t = await getCaptionTextDynamic(lang, deal.id);
   const title = resolveTitle(deal, lang);
   const price = formatPrice(deal);
   const discount = buildDiscount(deal, lang);

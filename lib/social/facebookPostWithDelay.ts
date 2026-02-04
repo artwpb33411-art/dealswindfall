@@ -3,28 +3,24 @@ import {
   publishFacebookComment,
 } from "./facebookPublisher";
 
-import { buildFacebookComment } from "./facebookCommentBuilder";
+import {
+  buildFacebookEngagementComment,
+  buildFacebookLinkComment,
+} from "./facebookCommentBuilder";
 
-
-
-function randomDelayMs(minSec = 30, maxSec = 90) {
-  const sec =
-    Math.floor(Math.random() * (maxSec - minSec + 1)) + minSec;
+function randomDelayMs(minSec: number, maxSec: number) {
+  const sec = Math.floor(Math.random() * (maxSec - minSec + 1)) + minSec;
   return sec * 1000;
 }
-//console.log("🚀 FACEBOOK NEW PIPELINE EXECUTED");
 
-// real code in here
 export async function postFacebookWithDelayedComment({
   pageId,
   pageAccessToken,
   caption,
   flyerImage,
-  isAffiliate,
+  isAffiliate, // kept but not used in comments now
   lang,
   dealUrl,
-  affiliateUrl,
-  productLink, // ✅ ADD THIS
 }: {
   pageId: string;
   pageAccessToken: string;
@@ -33,59 +29,40 @@ export async function postFacebookWithDelayedComment({
   isAffiliate: boolean;
   lang: "en" | "es";
   dealUrl: string;
-  affiliateUrl?: string;
-  productLink?: string; // ✅ ADD THIS
 }) {
-
-  // 🔑 SANITY CHECK — ADD THIS HERE
-  console.log(
-    "🔑 FB TOKEN PREFIX:",
-    pageAccessToken.slice(0, 8),
-    "LEN:",
-    pageAccessToken.length
-  );
-
-
-
- {
-  // 1️⃣ Publish post
   console.log("📘 FB CAPTION:", caption);
 
   const { postId } = await publishFacebookPost({
-  pageId,
-  pageAccessToken,
-  message: caption,
-  imageBuffer: flyerImage, // ✅ PASS IMAGE
-});
+    pageId,
+    pageAccessToken,
+    message: caption,
+    imageBuffer: flyerImage,
+  });
 
+  console.log("🆔 FB POST CREATED:", postId);
 
+  // 1) Stage 1 comment (no link) after 2–3 minutes
+  const delay1 = randomDelayMs(120, 180);
+  console.log(`⏳ Waiting ${delay1 / 1000}s before posting engagement comment`);
+  await new Promise(res => setTimeout(res, delay1));
 
-  // 2️⃣ Delay
-  const delay = randomDelayMs(30, 90);
+  const engagementComment = await buildFacebookEngagementComment({
+    lang,
+    dealUrl,
+    // use deal id from dealUrl if you want deterministic selection (see builder below)
+  });
 
-console.log(`⏳ Waiting ${delay / 1000}s before posting comment`);
+  await publishFacebookComment(postId, engagementComment, pageAccessToken);
 
-await new Promise(res => setTimeout(res, delay));
+  // 2) Stage 2 comment (WITH DealsWindfall link) after another 2–3 minutes
+  const delay2 = randomDelayMs(120, 180);
+  console.log(`⏳ Waiting ${delay2 / 1000}s before posting link comment`);
+  await new Promise(res => setTimeout(res, delay2));
 
+  const linkComment = await buildFacebookLinkComment({
+    lang,
+    dealUrl, // ALWAYS your website URL now
+  });
 
-console.log("🆔 FB POST CREATED:", postId);
-
-  // 3️⃣ Build comment
-  const comment = await buildFacebookComment({
-  isAffiliate,
-  lang,
-  dealUrl,
-  affiliateShortUrl: affiliateUrl, // mapped from normalizeDeal()
- productLink,
-
-});
-
-
-  // 4️⃣ Publish comment
-  await publishFacebookComment(
-    postId,
-    comment,
-    pageAccessToken
-  ); 
-}
+  await publishFacebookComment(postId, linkComment, pageAccessToken);
 }
