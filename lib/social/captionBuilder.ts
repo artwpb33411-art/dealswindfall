@@ -1,6 +1,6 @@
 import type { SelectedDeal } from "./types";
 import { SOCIAL_TEXT, SocialLang } from "./socialText";
-import { getSocialTextDynamic } from "@/lib/social/variantText";
+//import { getSocialTextDynamic } from "@/lib/social/variantText";
 
 import { getCaptionTextDynamic } from "./getCaptionTextDynamic";
 //import { SOCIAL_TEXT } from "./socialText";
@@ -110,7 +110,7 @@ ${url}${hashtagText}
   const shortRaw = `${title} — ${price}${discount}${store}. ${t.grabNow} ${url}`;
 
   return {
-    text: escapeHtml(longCaptionRaw),
+    text: longCaptionRaw,
     short: trimTo(
       finalHashtags.length > 0
         ? `${shortRaw} ${finalHashtags.join(" ")}`
@@ -167,7 +167,8 @@ ${t.dealAlert}: ${title}
 ${price}${discount}${store}
 
 ${t.limitedTime}
-${fbMoreDeals}
+${t.moreDeals}
+
 
 ${t.linkInComments}
 `.trim();
@@ -179,35 +180,30 @@ ${t.linkInComments}
 
   const captions: PlatformCaptions = {
     facebook: {
-      text: escapeHtml(facebookCaption),
+      text: facebookCaption,
       firstComment: url,
     },
 
-    instagram: {
-      text: escapeHtml(
-        `${baseCaption}\n\n${t.grabNow}\n${url}${hashtagText}`
-      ),
-    },
+   instagram: {
+  text: `${baseCaption}\n\n${t.grabNow}\n${url}${hashtagText}`,
+},
 
-    telegram: {
-      text: escapeHtml(
-        `${baseCaption}\n\n${t.viewDeal}\n${url}${hashtagText}`
-      ),
-    },
+telegram: {
+  text: `${baseCaption}\n\n${t.viewDeal}\n${url}${hashtagText}`,
+},
 
-    x: {
-      text: escapeHtml(
-        trimTo(
-          [
-            title,
-            `\n${price}${discount}${store}\n`,
-            `👉 ${url}\n`,
-            finalHashtags.join(" "),
-          ].join("\n"),
-          280
-        )
-      ),
-    },
+x: {
+  text: trimTo(
+    [
+      title,
+      `\n${price}${discount}${store}\n`,
+      `👉 ${url}\n`,
+      finalHashtags.join(" "),
+    ].join("\n"),
+    280
+  ),
+},
+
   };
 
   return { captions, url };

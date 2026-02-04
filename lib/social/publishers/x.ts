@@ -28,19 +28,15 @@ function ensureImageSize(buffer: Buffer) {
 }
 
 
-export async function publishToX(caption: string, imageBuffer: Buffer)
- {
+export async function publishToX(caption: string, imageBuffer: Buffer) {
+  const text = sanitizeForX(caption);
+  const buffer = ensureImageSize(imageBuffer);
+
   try {
-    const text = sanitizeForX(caption);
-    const buffer = ensureImageSize(imageBuffer);
-
-
-    // Upload media
     const mediaId = await client.v1.uploadMedia(buffer, {
       mimeType: "image/png",
     });
 
-    // Post tweet
     const tweet = await client.v2.tweet({
       text,
       media: { media_ids: [mediaId] },
@@ -49,6 +45,6 @@ export async function publishToX(caption: string, imageBuffer: Buffer)
     return tweet;
   } catch (err) {
     console.error("❌ X PUBLISH ERROR:", err);
-    return { error: String(err) };
+    throw err; // ✅ critical: makes tryPost log failure correctly
   }
 }
