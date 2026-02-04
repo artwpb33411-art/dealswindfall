@@ -46,7 +46,7 @@ const story = await generateFlyerStory(deal, baseImageBuffer);
 
 
  
-  const social = buildCaption(deal, hashtags);
+  const social = await buildCaption(deal, hashtags);
 
   async function tryPost(platform: string, fn: () => Promise<any>) {
     try {
@@ -87,7 +87,7 @@ const story = await generateFlyerStory(deal, baseImageBuffer);
 
  if (platforms.includes("facebook")) {
   await tryPost("facebook", async () => {
-    const { captions, url } = buildPlatformCaptions(
+    const { captions, url } = await buildPlatformCaptions(
       deal,
       hashtags,
       deal.language === "es" ? "es" : "en"
@@ -103,7 +103,7 @@ console.log("🚀 FACEBOOK NEW PIPELINE EXECUTED");
   isAffiliate: !!deal.is_affiliate,
   lang: deal.language === "es" ? "es" : "en",
   dealUrl: url,
-  affiliateUrl: deal.affiliate_url,
+ // affiliateUrl: deal.affiliate_url,
 });
 
 

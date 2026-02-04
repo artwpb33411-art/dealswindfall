@@ -278,10 +278,10 @@ if (ratioEnabled) {
         .map((t: string) => t.trim())
         .filter(Boolean);
 
-  const social = buildCaption(deal, hashtags, postLang);
+  const social = await buildCaption(deal, hashtags, postLang);
 const lang = detectLanguage(selectedRawDeal);
 
-  const platformCaptions = buildPlatformCaptions(
+  const platformCaptions = await buildPlatformCaptions(
     deal,
     hashtags,
     postLang 

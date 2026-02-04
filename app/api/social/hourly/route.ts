@@ -654,7 +654,7 @@ const finalHashtags = Array.from(
 );
 
 
-  const social = buildCaption(deal, finalHashtags, postLang);
+  const social = await buildCaption(deal, finalHashtags, postLang);
 
 
 
@@ -719,7 +719,7 @@ if (platforms.telegram) {
 
 if (platforms.facebook) {
   await tryPost("facebook", async () => {
-  const { captions, url } = buildPlatformCaptions(
+  const { captions, url } = await buildPlatformCaptions(
   deal,
   finalHashtags,
   postLang
@@ -734,8 +734,8 @@ if (platforms.facebook) {
   isAffiliate: !!deal.is_affiliate,
   lang: postLang,
   dealUrl: url,
-  affiliateUrl: deal.affiliate_url ?? undefined,
-  productLink: deal.product_link ?? undefined,
+  //affiliateUrl: deal.affiliate_url ?? undefined,
+  //productLink: deal.product_link ?? undefined,
 });
 
 
