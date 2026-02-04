@@ -42,7 +42,7 @@ export async function postFacebookWithDelayedComment({
   console.log("🆔 FB POST CREATED:", postId);
 
   // 1) Stage 1 comment (no link) after 2–3 minutes
-  const delay1 = randomDelayMs(120, 180);
+  const delay1 = randomDelayMs(45, 75);
   console.log(`⏳ Waiting ${delay1 / 1000}s before posting engagement comment`);
   await new Promise(res => setTimeout(res, delay1));
 
@@ -55,7 +55,7 @@ export async function postFacebookWithDelayedComment({
   await publishFacebookComment(postId, engagementComment, pageAccessToken);
 
   // 2) Stage 2 comment (WITH DealsWindfall link) after another 2–3 minutes
-  const delay2 = randomDelayMs(120, 180);
+  const delay2 = randomDelayMs(45, 75);
   console.log(`⏳ Waiting ${delay2 / 1000}s before posting link comment`);
   await new Promise(res => setTimeout(res, delay2));
 

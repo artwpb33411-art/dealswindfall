@@ -167,7 +167,7 @@ ${t.dealAlert}: ${title}
 ${price}${discount}${store}
 
 ${t.limitedTime}
-${t.moreDeals}
+
 
 
 ${t.linkInComments}
